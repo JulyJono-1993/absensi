@@ -51,8 +51,7 @@ export default function LoginPage() {
       } else {
         console.log("[Login] Success:", data);
         setDebugInfo("Login berhasil! Mengarahkan...");
-        router.push("/");
-        router.refresh();
+        window.location.href = "/";
       }
     } catch (err) {
       console.error("[Login] Exception:", err);
