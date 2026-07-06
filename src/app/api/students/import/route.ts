@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { students } from "@/db/schema";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -19,22 +18,17 @@ export async function POST(req: NextRequest) {
       skipped++;
       continue;
     }
-    try {
-      await db.insert(students).values({
-        name: s.name.trim(),
-        nisn: s.nisn.trim(),
-        classId: parseInt(classId),
-      });
-      imported++;
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Unknown error";
-      if (msg.includes("unique") || msg.includes("duplicate")) {
+    const { error } = await supabase.from("students").insert({ name: s.name.trim(), nisn: s.nisn.trim(), class_id: parseInt(classId) });
+    if (error) {
+      if (error.code === "23505" || error.message.toLowerCase().includes("unique")) {
         errors.push(`NISN ${s.nisn} sudah terdaftar`);
         skipped++;
       } else {
-        errors.push(`Error untuk ${s.name}: ${msg}`);
+        errors.push(`Error untuk ${s.name}: ${error.message}`);
         skipped++;
       }
+    } else {
+      imported++;
     }
   }
 

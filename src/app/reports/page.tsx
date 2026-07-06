@@ -65,6 +65,39 @@ export default function ReportsPage() {
     }
   };
 
+  const handleOpenGroup = async () => {
+    if (!report?.waGroupLink) return;
+
+    let copied = false;
+    if (report?.message) {
+      try {
+        await navigator.clipboard.writeText(report.message);
+        copied = true;
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = report.message;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        copied = true;
+      }
+    }
+
+    window.open(report.waGroupLink, "_blank");
+
+    setToast({
+      show: true,
+      message: copied ? "Pesan disalin ke clipboard" : "Gagal menyalin pesan",
+      description: copied
+        ? "Buka grup WhatsApp lalu tekan Ctrl+V / tempel untuk mengirim laporan."
+        : "Silakan salin pesan laporan secara manual.",
+      type: copied ? "success" : "error",
+    });
+  };
+
   const handleCopyMessage = async () => {
     if (report?.message) {
       try {
@@ -250,12 +283,21 @@ export default function ReportsPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
+            {report.waGroupLink && (
+              <button
+                onClick={handleOpenGroup}
+                className="bg-[#25D366] text-white font-semibold text-sm h-12 px-8 rounded-xl flex items-center justify-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
+              >
+                <span className="material-symbols-outlined">send</span>
+                Kirim ke Grup WA
+              </button>
+            )}
             <button
               onClick={handleSendWA}
-              className="bg-[#25D366] text-white font-semibold text-sm h-12 px-8 rounded-xl flex items-center justify-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
+              className="bg-surface-container-lowest border border-outline-variant text-on-surface font-semibold text-sm h-12 px-8 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors"
             >
-              <span className="material-symbols-outlined">send</span>
-              Kirim ke WhatsApp
+              <span className="material-symbols-outlined">chat</span>
+              Kirim Manual (Pilih Grup/Contact)
             </button>
             <button
               onClick={handleCopyMessage}

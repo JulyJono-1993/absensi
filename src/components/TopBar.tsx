@@ -1,6 +1,18 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@/lib/supabase/browser-client";
+
 export function TopBar() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-surface border-b border-outline-variant flex justify-between items-center w-full px-4 md:px-8 h-16 md:ml-[260px] md:w-[calc(100%-260px)]">
       <div className="flex items-center gap-4">
@@ -24,12 +36,16 @@ export function TopBar() {
         <div className="h-8 w-[1px] bg-outline-variant mx-2"></div>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <p className="font-semibold text-sm text-on-surface">Admin Utama</p>
+            <p className="font-semibold text-sm text-on-surface">Admin</p>
             <p className="text-[10px] text-on-surface-variant">Petugas Absensi</p>
           </div>
           <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold">
             A
           </div>
+          <button onClick={handleLogout} className="hidden sm:flex items-center gap-1 text-xs text-error hover:bg-error/5 px-3 py-2 rounded-lg transition-colors ml-2">
+            <span className="material-symbols-outlined text-sm">logout</span>
+            Keluar
+          </button>
         </div>
       </div>
     </header>

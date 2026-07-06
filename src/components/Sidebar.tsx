@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createBrowserClient } from "@/lib/supabase/browser-client";
 
 const navItems = [
   { href: "/", icon: "dashboard", label: "Dashboard" },
@@ -9,10 +10,17 @@ const navItems = [
   { href: "/students", icon: "person", label: "Master Siswa" },
   { href: "/attendance", icon: "edit_note", label: "Entri Absensi" },
   { href: "/reports", icon: "assessment", label: "Laporan" },
+  { href: "/print", icon: "print", label: "Cetak" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    const supabase = createBrowserClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[260px] hidden md:flex flex-col bg-primary shadow-sm z-50 py-6">
@@ -47,14 +55,10 @@ export function Sidebar() {
         })}
       </nav>
       <div className="pt-6 mt-6 border-t border-on-primary/10">
-        <a className="text-secondary-fixed-dim hover:text-on-primary px-4 py-3 mx-2 transition-colors flex items-center gap-3 rounded-lg hover:bg-on-primary/5" href="#">
-          <span className="material-symbols-outlined">settings</span>
-          <span className="text-sm">Settings</span>
-        </a>
-        <a className="text-secondary-fixed-dim hover:text-on-primary px-4 py-3 mx-2 transition-colors flex items-center gap-3 rounded-lg hover:bg-on-primary/5" href="#">
+        <button onClick={handleLogout} className="text-secondary-fixed-dim hover:text-on-primary px-4 py-3 mx-2 transition-colors flex items-center gap-3 rounded-lg hover:bg-on-primary/5 w-full">
           <span className="material-symbols-outlined">logout</span>
-          <span className="text-sm">Logout</span>
-        </a>
+          <span className="text-sm">Keluar</span>
+        </button>
       </div>
     </aside>
   );

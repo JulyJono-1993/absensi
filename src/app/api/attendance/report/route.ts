@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { attendance, students, classes } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -12,37 +10,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "classId dan date wajib diisi" }, { status: 400 });
   }
 
-  // Get class info
-  const classInfo = await db
-    .select()
-    .from(classes)
-    .where(eq(classes.id, parseInt(classId)))
-    .limit(1);
-
-  if (classInfo.length === 0) {
+  const { data: classInfo, error: classError } = await supabase.from("classes").select("*").eq("id", parseInt(classId)).single();
+  if (classError || !classInfo) {
     return NextResponse.json({ error: "Kelas tidak ditemukan" }, { status: 404 });
   }
 
-  // Get attendance with student names
-  const records = await db
-    .select({
-      studentName: students.name,
-      nisn: students.nisn,
-      status: attendance.status,
-    })
-    .from(attendance)
-    .innerJoin(students, eq(attendance.studentId, students.id))
-    .where(
-      and(
-        eq(attendance.classId, parseInt(classId)),
-        eq(attendance.date, date)
-      )
-    )
-    .orderBy(students.name);
+  const { data: records, error: attError } = await supabase.from("attendance").select("*, students(name, nisn), classes(name)").eq("class_id", parseInt(classId)).eq("date", date);
+  if (attError) return NextResponse.json({ error: attError.message }, { status: 500 });
 
-  // Build WhatsApp message
-  const className = classInfo[0].name;
-  const waGroupLink = classInfo[0].waGroupLink;
+  const className = classInfo.name;
+  const waGroupLink = classInfo.wa_group_link || null;
   const formattedDate = new Date(date).toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",
@@ -69,10 +46,11 @@ export async function GET(req: NextRequest) {
   let totalSiswa = records.length;
 
   for (const r of records) {
-    if (r.status === "H") {
+    const status = (r as any).status;
+    if (status === "H") {
       totalHadir++;
-    } else if (grouped[r.status]) {
-      grouped[r.status].push(r.studentName);
+    } else if (grouped[status]) {
+      grouped[status].push((r as any).students?.name || "");
     }
   }
 
@@ -108,14 +86,7 @@ export async function GET(req: NextRequest) {
   message += `📊 _Dikirim via EduAttend_`;
 
   const encodedMessage = encodeURIComponent(message);
-  let waUrl: string;
-  
-  if (waGroupLink) {
-    // If group link is a phone number
-    waUrl = `https://wa.me/?text=${encodedMessage}`;
-  } else {
-    waUrl = `https://wa.me/?text=${encodedMessage}`;
-  }
+  const waUrl = `https://wa.me/?text=${encodedMessage}`;
 
   return NextResponse.json({
     message,

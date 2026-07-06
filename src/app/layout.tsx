@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
-import { TopBar } from "@/components/TopBar";
-import { BottomNav } from "@/components/BottomNav";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "EduAttend - Sistem Absensi Siswa",
@@ -24,12 +22,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="bg-background text-on-background min-h-screen font-inter antialiased overflow-x-hidden">
-        <Sidebar />
-        <TopBar />
-        <main className="md:ml-[260px] pb-24 md:pb-8 pt-6 px-4 md:px-8">
-          {children}
-        </main>
-        <BottomNav />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

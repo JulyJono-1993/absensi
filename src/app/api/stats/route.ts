@@ -1,50 +1,32 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { classes, students, attendance } from "@/db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   const today = new Date().toISOString().split("T")[0];
 
-  // Count classes
-  const classCount = await db.select({ count: sql<number>`count(*)::int` }).from(classes);
+  const { count: classCount } = await supabase.from("classes").select("*", { count: "exact", head: true });
+  const { count: studentCount } = await supabase.from("students").select("*", { count: "exact", head: true });
 
-  // Count students
-  const studentCount = await db.select({ count: sql<number>`count(*)::int` }).from(students);
-
-  // Today's attendance
-  const todayAttendance = await db
-    .select({
-      status: attendance.status,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(attendance)
-    .where(eq(attendance.date, today))
-    .groupBy(attendance.status);
+  const { data: todayAttendance } = await supabase.from("attendance").select("status").eq("date", today);
 
   const statusCounts: Record<string, number> = { H: 0, A: 0, I: 0, S: 0, T: 0 };
-  for (const row of todayAttendance) {
-    statusCounts[row.status] = row.count;
+  for (const row of todayAttendance || []) {
+    statusCounts[row.status] = row.status in statusCounts ? (statusCounts[row.status] + 1) : 1;
   }
 
-  // Recent attendance (last 7 entries)
-  const recentAttendance = await db
-    .select({
-      date: attendance.date,
-      className: classes.name,
-      status: attendance.status,
-      studentName: students.name,
-    })
-    .from(attendance)
-    .innerJoin(students, eq(attendance.studentId, students.id))
-    .innerJoin(classes, eq(attendance.classId, classes.id))
-    .orderBy(sql`${attendance.date} DESC, ${attendance.createdAt} DESC`)
-    .limit(10);
+  const { data: recentAttendance } = await supabase.from("attendance").select("date, status, created_at, students(name), classes(name)").order("date", { ascending: false }).limit(10);
+
+  const mapped = (recentAttendance || []).map((r: any) => ({
+    date: r.date,
+    className: r.classes?.[0]?.name || "",
+    status: r.status,
+    studentName: r.students?.[0]?.name || "",
+  }));
 
   return NextResponse.json({
-    totalClasses: classCount[0].count,
-    totalStudents: studentCount[0].count,
+    totalClasses: classCount || 0,
+    totalStudents: studentCount || 0,
     today: statusCounts,
-    recentAttendance,
+    recentAttendance: mapped,
   });
 }

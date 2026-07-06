@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createBrowserClient } from "@/lib/supabase/browser-client";
 
 const navItems = [
   { href: "/", icon: "dashboard", label: "Home" },
@@ -9,10 +10,17 @@ const navItems = [
   { href: "/students", icon: "person", label: "Siswa" },
   { href: "/attendance", icon: "edit_note", label: "Absensi" },
   { href: "/reports", icon: "assessment", label: "Laporan" },
+  { href: "/print", icon: "print", label: "Cetak" },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    const supabase = createBrowserClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 w-full flex justify-around items-center px-2 pb-2 pt-1 z-50 md:hidden bg-surface border-t border-outline-variant shadow-lg">
@@ -33,6 +41,10 @@ export function BottomNav() {
           </Link>
         );
       })}
+      <button onClick={handleLogout} className="flex flex-col items-center justify-center text-on-surface-variant py-2 px-1">
+        <span className="material-symbols-outlined text-xl">logout</span>
+        <span className="text-[10px] font-medium">Keluar</span>
+      </button>
     </nav>
   );
 }

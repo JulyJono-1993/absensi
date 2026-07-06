@@ -132,7 +132,9 @@ export default function ClassesPage() {
               {cls.waGroupLink && (
                 <div className="flex items-center gap-2 mb-4 p-2 rounded-lg bg-emerald-50 text-emerald-700">
                   <span className="material-symbols-outlined text-sm">chat</span>
-                  <span className="text-xs truncate">{cls.waGroupLink}</span>
+                  <a href={cls.waGroupLink} target="_blank" rel="noreferrer" className="text-xs truncate underline decoration-emerald-700/40 hover:decoration-emerald-700">
+                    {cls.waGroupLink}
+                  </a>
                 </div>
               )}
               <div className="flex items-center gap-2 pt-3 border-t border-outline-variant/50">

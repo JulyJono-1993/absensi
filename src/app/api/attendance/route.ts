@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { attendance, students, classes } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -12,31 +10,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "classId dan date wajib diisi" }, { status: 400 });
   }
 
-  // Get all students in class
-  const studentList = await db
-    .select()
-    .from(students)
-    .where(eq(students.classId, parseInt(classId)))
-    .orderBy(students.name);
+  const { data: studentList, error: stuError } = await supabase.from("students").select("*").eq("class_id", parseInt(classId)).order("name", { ascending: true });
+  if (stuError) return NextResponse.json({ error: stuError.message }, { status: 500 });
 
-  // Get existing attendance for this date
-  const existingAttendance = await db
-    .select()
-    .from(attendance)
-    .where(
-      and(
-        eq(attendance.classId, parseInt(classId)),
-        eq(attendance.date, date)
-      )
-    );
+  const { data: existingAttendance, error: attError } = await supabase.from("attendance").select("*").eq("class_id", parseInt(classId)).eq("date", date);
+  if (attError) return NextResponse.json({ error: attError.message }, { status: 500 });
 
-  const attendanceMap = new Map(existingAttendance.map((a) => [a.studentId, a.status]));
+  const attendanceMap = new Map((existingAttendance || []).map((a: any) => [a.student_id, a.status]));
 
-  const result = studentList.map((s) => ({
+  const result = (studentList || []).map((s: any) => ({
     studentId: s.id,
     name: s.name,
     nisn: s.nisn,
-    status: attendanceMap.get(s.id) || "H", // default Hadir
+    status: attendanceMap.get(s.id) || "H",
   }));
 
   return NextResponse.json(result);
@@ -50,24 +36,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
   }
 
-  // Delete existing attendance for this class and date
-  await db.delete(attendance).where(
-    and(
-      eq(attendance.classId, parseInt(classId)),
-      eq(attendance.date, date)
-    )
-  );
+  const classIdNum = parseInt(classId);
+  const { error: deleteError } = await supabase.from("attendance").delete().eq("class_id", classIdNum).eq("date", date);
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
-  // Insert new records
   if (records.length > 0) {
     const values = records.map((r: { studentId: number; status: string }) => ({
-      studentId: r.studentId,
-      classId: parseInt(classId),
+      student_id: r.studentId,
+      class_id: classIdNum,
       date,
       status: r.status,
     }));
-
-    await db.insert(attendance).values(values);
+    const { error: insertError } = await supabase.from("attendance").insert(values);
+    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, count: records.length });
@@ -82,12 +63,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "classId dan date wajib diisi" }, { status: 400 });
   }
 
-  await db.delete(attendance).where(
-    and(
-      eq(attendance.classId, parseInt(classId)),
-      eq(attendance.date, date)
-    )
-  );
+  const { error } = await supabase.from("attendance").delete().eq("class_id", parseInt(classId)).eq("date", date);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true });
 }

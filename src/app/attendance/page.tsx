@@ -15,12 +15,11 @@ interface AttendanceRecord {
   status: string;
 }
 
-const statusOptions = [
-  { key: "H", label: "Hadir", color: "text-emerald-600", bgActive: "bg-emerald-600", border: "border-emerald-600" },
-  { key: "A", label: "Alpa", color: "text-rose-600", bgActive: "bg-rose-600", border: "border-rose-600" },
-  { key: "I", label: "Izin", color: "text-amber-600", bgActive: "bg-amber-600", border: "border-amber-600" },
-  { key: "S", label: "Sakit", color: "text-sky-600", bgActive: "bg-sky-600", border: "border-sky-600" },
-  { key: "T", label: "Terlambat", color: "text-purple-600", bgActive: "bg-purple-600", border: "border-purple-600" },
+const absentOptions = [
+  { key: "A", label: "Alpa", color: "bg-rose-600", border: "border-rose-600" },
+  { key: "I", label: "Izin", color: "bg-amber-600", border: "border-amber-600" },
+  { key: "S", label: "Sakit", color: "bg-sky-600", border: "border-sky-600" },
+  { key: "T", label: "Terlambat", color: "bg-purple-600", border: "border-purple-600" },
 ];
 
 export default function AttendancePage() {
@@ -49,7 +48,18 @@ export default function AttendancePage() {
     setLoading(true);
     const res = await fetch(`/api/attendance?classId=${selectedClassId}&date=${selectedDate}`);
     const data = await res.json();
-    setRecords(Array.isArray(data) ? data : []);
+    if (Array.isArray(data)) {
+      setRecords(
+        data.map((r: any) => ({
+          studentId: r.studentId,
+          name: r.name,
+          nisn: r.nisn,
+          status: r.status || "H",
+        }))
+      );
+    } else {
+      setRecords([]);
+    }
     setLoading(false);
   }, [selectedClassId, selectedDate]);
 
@@ -65,7 +75,14 @@ export default function AttendancePage() {
 
   const setStatus = (studentId: number, status: string) => {
     setRecords((prev) =>
-      prev.map((r) => (r.studentId === studentId ? { ...r, status } : r))
+      prev.map((r) => {
+        if (r.studentId !== studentId) return r;
+        const currentAbsent = absentOptions.find((o) => o.key === r.status);
+        if (currentAbsent && currentAbsent.key === status) {
+          return { ...r, status: "H" };
+        }
+        return { ...r, status };
+      })
     );
   };
 
@@ -73,13 +90,20 @@ export default function AttendancePage() {
     if (!selectedClassId || records.length === 0) return;
     setSaving(true);
 
+    const absentRecords = records
+      .filter((r) => r.status !== "H")
+      .map((r) => ({
+        studentId: r.studentId,
+        status: r.status,
+      }));
+
     const res = await fetch("/api/attendance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         classId: selectedClassId,
         date: selectedDate,
-        records: records.map((r) => ({ studentId: r.studentId, status: r.status })),
+        records: absentRecords,
       }),
     });
 
@@ -100,10 +124,8 @@ export default function AttendancePage() {
 
   const handleSendWA = async () => {
     if (!selectedClassId) return;
-
     const res = await fetch(`/api/attendance/report?classId=${selectedClassId}&date=${selectedDate}`);
     const data = await res.json();
-
     if (data.waUrl) {
       window.open(data.waUrl, "_blank");
     }
@@ -111,10 +133,11 @@ export default function AttendancePage() {
 
   const selectedClassName = classes.find((c) => c.id.toString() === selectedClassId)?.name || "";
 
-  // Summary counts
-  const statusCounts = records.reduce(
+  const absentCounts = records.reduce(
     (acc, r) => {
-      acc[r.status] = (acc[r.status] || 0) + 1;
+      if (r.status !== "H") {
+        acc[r.status] = (acc[r.status] || 0) + 1;
+      }
       return acc;
     },
     {} as Record<string, number>
@@ -125,8 +148,8 @@ export default function AttendancePage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">Entri Absensi Harian</h2>
-          <p className="text-on-surface-variant text-sm">
-            Pilih kelas dan tanggal, lalu tentukan status kehadiran setiap siswa.
+          <p className="text-sm text-on-surface-variant">
+            Semua siswa dianggap <strong>Hadir</strong> secara default. Klik tombol di bawah untuk menandai siswa yang tidak hadir.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
@@ -155,22 +178,25 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {/* Summary Bar */}
+      {/* Absent Summary Bar */}
       {records.length > 0 && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 mb-6 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
             <span className="text-sm font-semibold text-on-surface">Ringkasan:</span>
-            {statusOptions.map((opt) => (
+            {absentOptions.map((opt) => (
               <div key={opt.key} className="flex items-center gap-1.5">
-                <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${opt.bgActive}`}>
+                <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${absentOptions.find((o) => o.key === opt.key)?.color}`}>
                   {opt.key}
                 </span>
                 <span className="text-sm text-on-surface">
-                  {opt.label}: <strong>{statusCounts[opt.key] || 0}</strong>
+                  {opt.label}: <strong>{absentCounts[opt.key] || 0}</strong>
                 </span>
               </div>
             ))}
             <span className="text-sm text-on-surface-variant ml-auto">Total: {records.length} siswa</span>
+            <span className="text-sm text-emerald-600 font-medium">
+              Hadir: {records.length - (absentCounts.A + absentCounts.I + absentCounts.S + absentCounts.T)}
+            </span>
           </div>
         </div>
       )}
@@ -197,82 +223,44 @@ export default function AttendancePage() {
       ) : (
         <>
           <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
-            {/* Desktop Table */}
-            <div className="hidden md:block">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-surface-container-low">
-                  <tr>
-                    <th className="p-4 text-sm font-semibold text-on-surface-variant border-b border-outline-variant w-16">No</th>
-                    <th className="p-4 text-sm font-semibold text-on-surface-variant border-b border-outline-variant">Nama Siswa</th>
-                    <th className="p-4 text-sm font-semibold text-on-surface-variant border-b border-outline-variant">NISN</th>
-                    <th className="p-4 text-sm font-semibold text-on-surface-variant border-b border-outline-variant text-center">
-                      Status Kehadiran
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant">
-                  {records.map((r, idx) => (
-                    <tr key={r.studentId} className="hover:bg-surface-container-low/50 transition-colors">
-                      <td className="p-4 text-sm text-on-surface-variant">{idx + 1}</td>
-                      <td className="p-4 text-sm font-medium text-on-surface">{r.name}</td>
-                      <td className="p-4 text-sm text-outline font-mono">{r.nisn}</td>
-                      <td className="p-4">
-                        <div className="flex justify-center items-center gap-2">
-                          {statusOptions.map((opt) => (
-                            <div key={opt.key} className="relative group">
-                              <button
-                                onClick={() => setStatus(r.studentId, opt.key)}
-                                className={`w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all cursor-pointer flex items-center justify-center ${
-                                  r.status === opt.key
-                                    ? `${opt.bgActive} text-white ${opt.border}`
-                                    : `border-outline-variant ${opt.color} hover:bg-surface-container`
-                                }`}
-                              >
-                                {opt.key}
-                              </button>
-                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                                {opt.label}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="md:hidden divide-y divide-outline-variant">
-              {records.map((r) => (
-                <div key={r.studentId} className="p-4 space-y-3">
-                  <div>
-                    <h3 className="font-medium text-sm text-on-surface">{r.name}</h3>
-                    <p className="text-xs text-on-surface-variant">NISN: {r.nisn}</p>
+            <div className="divide-y divide-outline-variant">
+              {records.map((r) => {
+                const activeAbsent = absentOptions.find((o) => o.key === r.status);
+                return (
+                  <div key={r.studentId} className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-on-surface truncate">{r.name}</p>
+                      <p className="text-xs text-on-surface-variant font-mono">{r.nisn}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {r.status === "H" && (
+                        <span className="text-xs font-medium bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200">
+                          Hadir
+                        </span>
+                      )}
+                      {absentOptions.map((opt) => {
+                        const isActive = activeAbsent?.key === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            onClick={() => setStatus(r.studentId, opt.key)}
+                            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                              isActive
+                                ? `${opt.color} text-white ${opt.border}`
+                                : "border-outline-variant text-on-surface-variant hover:bg-surface-container"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {statusOptions.map((opt) => (
-                      <button
-                        key={opt.key}
-                        onClick={() => setStatus(r.studentId, opt.key)}
-                        className={`flex flex-col items-center justify-center py-2 rounded-xl border-2 transition-all ${
-                          r.status === opt.key
-                            ? `${opt.bgActive} text-white ${opt.border}`
-                            : `border-outline-variant ${opt.color}`
-                        }`}
-                      >
-                        <span className="text-base font-extrabold">{opt.key}</span>
-                        <span className="text-[7px] uppercase font-bold tracking-tighter">{opt.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
@@ -291,9 +279,9 @@ export default function AttendancePage() {
                 Kirim Laporan ke WA
               </button>
             </div>
-            <p className="text-sm text-on-surface-variant italic">
+            <p className="text-xs text-on-surface-variant italic">
               <span className="material-symbols-outlined text-[16px] text-primary align-sub mr-1">info</span>
-              Simpan terlebih dahulu sebelum mengirim ke WA
+              Hapus tanda jika siswa seharusnya Hadir. Simpan terlebih dahulu sebelum mengirim ke WA.
             </p>
           </div>
         </>

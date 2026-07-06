@@ -1,43 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { students, classes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const classId = searchParams.get("classId");
 
-  let query;
+  let query = supabase.from("students").select("*, classes(name)").order("name", { ascending: true });
   if (classId) {
-    query = db
-      .select({
-        id: students.id,
-        name: students.name,
-        nisn: students.nisn,
-        classId: students.classId,
-        className: classes.name,
-        createdAt: students.createdAt,
-      })
-      .from(students)
-      .innerJoin(classes, eq(students.classId, classes.id))
-      .where(eq(students.classId, parseInt(classId)))
-      .orderBy(students.name);
-  } else {
-    query = db
-      .select({
-        id: students.id,
-        name: students.name,
-        nisn: students.nisn,
-        classId: students.classId,
-        className: classes.name,
-        createdAt: students.createdAt,
-      })
-      .from(students)
-      .innerJoin(classes, eq(students.classId, classes.id))
-      .orderBy(students.name);
+    query = query.eq("class_id", parseInt(classId));
   }
 
-  const result = await query;
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const result = (data || []).map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    nisn: s.nisn,
+    classId: s.class_id,
+    className: s.classes?.[0]?.name || "",
+    createdAt: s.created_at,
+  }));
+
   return NextResponse.json(result);
 }
 
@@ -49,20 +33,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nama, NISN, dan Kelas wajib diisi" }, { status: 400 });
   }
 
-  try {
-    const result = await db.insert(students).values({
-      name,
-      nisn,
-      classId: parseInt(classId),
-    }).returning();
-    return NextResponse.json(result[0], { status: 201 });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    if (msg.includes("unique") || msg.includes("duplicate")) {
+  const { data, error } = await supabase.from("students").insert({ name, nisn, class_id: parseInt(classId) }).select().single();
+  if (error) {
+    if (error.code === "23505" || error.message.toLowerCase().includes("unique")) {
       return NextResponse.json({ error: "NISN sudah terdaftar" }, { status: 400 });
     }
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  return NextResponse.json(data, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -73,6 +52,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "ID wajib diisi" }, { status: 400 });
   }
 
-  await db.delete(students).where(eq(students.id, parseInt(id)));
+  const { error } = await supabase.from("students").delete().eq("id", parseInt(id));
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
