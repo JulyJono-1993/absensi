@@ -1,16 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/browser-client";
-
 export function TopBar() {
-  const router = useRouter();
-
   const handleLogout = async () => {
-    const supabase = createBrowserClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
   };
 
   return (

@@ -2,25 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/browser-client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsLoggedIn(true);
-        router.push("/");
-      }
-    });
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.authenticated) {
+          router.push("/");
+        }
+      })
+      .catch(() => {});
   }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -59,11 +58,6 @@ export default function LoginPage() {
       setDebugInfo(`Exception: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/";
   };
 
   return (
@@ -120,17 +114,6 @@ export default function LoginPage() {
             {loading ? "Masuk..." : "Masuk"}
           </button>
         </div>
-
-        {isLoggedIn && (
-          <div className="text-center mt-6">
-            <button
-              onClick={handleLogout}
-              className="bg-error text-on-error-container px-4 py-2 rounded-xl text-sm"
-            >
-              Keluar
-            </button>
-          </div>
-        )}
 
         <p className="text-xs text-on-surface-variant text-center mt-6">
           Akses ditentukan oleh Supabase Auth.
