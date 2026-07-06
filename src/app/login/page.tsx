@@ -9,12 +9,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createBrowserClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.push("/");
+      if (session) {
+        setIsLoggedIn(true);
+        router.push("/");
+      }
     });
   }, [router]);
 
@@ -36,6 +40,13 @@ export default function LoginPage() {
       router.push("/");
       router.refresh();
     }
+  };
+
+  const handleLogout = async () => {
+    const supabase = createBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
   };
 
   return (
@@ -87,10 +98,24 @@ export default function LoginPage() {
           </button>
         </div>
 
+        {isLoggedIn && (
+          <div className="text-center mt-6">
+            <button
+              onClick={handleLogout}
+              className="bg-error text-on-error-container px-4 py-2 rounded-xl text-sm"
+            >
+              Keluar
+            </button>
+          </div>
+        )}
+
         <p className="text-xs text-on-surface-variant text-center mt-6">
           Akses ditentukan oleh Supabase Auth.
           <br />
           Buat user baru di panel Supabase jika diperlukan.
+        </p>
+        <p className="text-xs text-on-surface-variant text-center mt-4">
+          Built with ❤️ by JulyJono using Vibe Coding
         </p>
       </form>
     </div>

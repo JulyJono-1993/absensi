@@ -16,7 +16,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className={!isLoginPage ? "md:ml-[260px] pb-24 md:pb-8 pt-6 px-4 md:px-8" : ""}>
         {children}
       </main>
-      {!isLoginPage && <BottomNav />}
+      {!isLoginPage && (
+        <>
+          <BottomNav />
+          <footer className="md:ml-[260px] px-4 md:px-8 py-4 text-center border-t border-outline-variant">
+            <p className="text-xs text-on-surface-variant">Built with ❤️ by JulyJono using Vibe Coding</p>
+          </footer>
+        </>
+      )}
     </>
   );
 }
