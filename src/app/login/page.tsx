@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [debugInfo, setDebugInfo] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -26,19 +27,38 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setDebugInfo("");
 
-    const supabase = createBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      console.log("[Login] Attempt login with:", email);
+      setDebugInfo("Mencoba login...");
 
-    if (error) {
-      setError(error.message);
+      const supabase = createBrowserClient();
+      console.log("[Login] Supabase client created");
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      console.log("[Login] Response:", { data, error });
+
+      if (error) {
+        console.error("[Login] Error:", error);
+        setError(error.message);
+        setDebugInfo(`Error: ${error.message}`);
+        setLoading(false);
+      } else {
+        console.log("[Login] Success:", data);
+        setDebugInfo("Login berhasil! Mengarahkan...");
+        router.push("/");
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("[Login] Exception:", err);
+      setError("Terjadi kesalahan tidak terduga");
+      setDebugInfo(`Exception: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
     }
   };
 
@@ -63,6 +83,12 @@ export default function LoginPage() {
         {error && (
           <div className="bg-error-container text-on-error-container px-4 py-3 rounded-xl mb-4 text-sm">
             {error}
+          </div>
+        )}
+
+        {debugInfo && !error && (
+          <div className="bg-info-container text-on-info-container px-4 py-3 rounded-xl mb-4 text-sm">
+            {debugInfo}
           </div>
         )}
 
