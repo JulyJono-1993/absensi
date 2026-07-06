@@ -33,26 +33,26 @@ export default function LoginPage() {
       console.log("[Login] Attempt login with:", email);
       setDebugInfo("Mencoba login...");
 
-      const supabase = createBrowserClient();
-      console.log("[Login] Supabase client created");
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
-      console.log("[Login] Response:", { data, error });
+      const result = await res.json();
+      console.log("[Login] API response:", result);
 
-      if (error) {
-        console.error("[Login] Error:", error);
-        setError(error.message);
-        setDebugInfo(`Error: ${error.message}`);
+      if (!res.ok || result.error) {
+        console.error("[Login] Error:", result.error);
+        setError(result.error || "Login gagal");
+        setDebugInfo(`Error: ${result.error || "Login gagal"}`);
         setLoading(false);
-      } else {
-        console.log("[Login] Success:", data);
-        setDebugInfo("Login berhasil! Mengarahkan...");
-        window.location.href = "/";
+        return;
       }
+
+      console.log("[Login] Success");
+      setDebugInfo("Login berhasil! Mengarahkan...");
+      window.location.href = "/";
     } catch (err) {
       console.error("[Login] Exception:", err);
       setError("Terjadi kesalahan tidak terduga");
