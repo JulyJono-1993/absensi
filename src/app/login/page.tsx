@@ -62,10 +62,8 @@ export default function LoginPage() {
   };
 
   const handleLogout = async () => {
-    const supabase = createBrowserClient();
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/";
   };
 
   return (
