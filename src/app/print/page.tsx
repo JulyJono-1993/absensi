@@ -114,6 +114,15 @@ export default function PrintPage() {
 
   const className = classes.find((c) => c.id.toString() === selectedClassId)?.name || "";
 
+  const isWeekend = (() => {
+    if (!date) return false;
+    const [y, m, d] = date.split("-").map(Number);
+    const day = new Date(y, m - 1, d).getDay();
+    return day === 0 || day === 6;
+  })();
+
+  const isDailyWeekend = period === "daily" && isWeekend;
+
   return (
     <div>
       <div className="mb-8">
@@ -192,7 +201,15 @@ export default function PrintPage() {
         </div>
       </div>
 
-      {data && (
+      {isDailyWeekend ? (
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
+          <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">event_busy</span>
+          <h3 className="font-bold text-lg text-on-surface mb-2">Sekolah Libur</h3>
+          <p className="text-sm text-on-surface-variant">
+            Tidak ada rekap absensi pada hari Sabtu dan Minggu. Pilih tanggal hari kerja untuk mencetak.
+          </p>
+        </div>
+      ) : data && (
         <div id="print-area" className="bg-white rounded-2xl border border-outline-variant shadow-sm overflow-hidden">
           {/* Header */}
           <div className="p-6 border-b border-outline-variant bg-surface-container-lowest/60">
@@ -327,7 +344,7 @@ export default function PrintPage() {
         </div>
       )}
 
-      {!data && (
+      {!data && !isDailyWeekend && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
           <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">print</span>
           <h3 className="font-bold text-lg text-on-surface mb-2">Pilih Kelas dan Periode</h3>

@@ -116,6 +116,13 @@ export default function ReportsPage() {
     }
   };
 
+  const isWeekend = (() => {
+    if (!selectedDate) return false;
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const day = new Date(y, m - 1, d).getDay();
+    return day === 0 || day === 6;
+  })();
+
   return (
     <div>
       <div className="mb-8">
@@ -161,7 +168,17 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {report && report.summary && (
+      {isWeekend && (
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
+          <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">event_busy</span>
+          <h3 className="font-bold text-lg text-on-surface mb-2">Sekolah Libur</h3>
+          <p className="text-sm text-on-surface-variant">
+            Tidak ada laporan absensi pada hari Sabtu dan Minggu. Pilih tanggal hari kerja untuk melihat laporan.
+          </p>
+        </div>
+      )}
+
+      {!isWeekend && report && report.summary && (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
@@ -310,7 +327,7 @@ export default function ReportsPage() {
         </>
       )}
 
-      {!report && !loading && (
+      {!isWeekend && !report && !loading && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
           <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">assessment</span>
           <h3 className="font-bold text-lg text-on-surface mb-2">Pilih Kelas dan Tanggal</h3>

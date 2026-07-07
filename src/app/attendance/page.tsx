@@ -133,6 +133,13 @@ export default function AttendancePage() {
 
   const selectedClassName = classes.find((c) => c.id.toString() === selectedClassId)?.name || "";
 
+  const isWeekend = (() => {
+    if (!selectedDate) return false;
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const day = new Date(y, m - 1, d).getDay();
+    return day === 0 || day === 6;
+  })();
+
   const absentCounts = records.reduce(
     (acc, r) => {
       if (r.status !== "H") {
@@ -178,112 +185,124 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {/* Absent Summary Bar */}
-      {records.length > 0 && (
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 mb-6 shadow-sm">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="text-sm font-semibold text-on-surface">Ringkasan:</span>
-            {absentOptions.map((opt) => (
-              <div key={opt.key} className="flex items-center gap-1.5">
-                <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${absentOptions.find((o) => o.key === opt.key)?.color}`}>
-                  {opt.key}
-                </span>
-                <span className="text-sm text-on-surface">
-                  {opt.label}: <strong>{absentCounts[opt.key] || 0}</strong>
-                </span>
-              </div>
-            ))}
-            <span className="text-sm text-on-surface-variant ml-auto">Total: {records.length} siswa</span>
-            <span className="text-sm text-emerald-600 font-medium">
-              Hadir: {records.length - (absentCounts.A + absentCounts.I + absentCounts.S + absentCounts.T)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Student List */}
-      {!selectedClassId ? (
+      {isWeekend ? (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
-          <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">edit_note</span>
-          <h3 className="font-bold text-lg text-on-surface mb-2">Pilih Kelas Terlebih Dahulu</h3>
-          <p className="text-sm text-on-surface-variant">Pilih kelas dan tanggal di atas untuk mulai mengisi absensi.</p>
-        </div>
-      ) : loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
-      ) : records.length === 0 ? (
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
-          <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">person_off</span>
-          <h3 className="font-bold text-lg text-on-surface mb-2">Belum Ada Siswa di Kelas Ini</h3>
+          <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">event_busy</span>
+          <h3 className="font-bold text-lg text-on-surface mb-2">Sekolah Libur</h3>
           <p className="text-sm text-on-surface-variant">
-            Tambahkan siswa ke kelas {selectedClassName} melalui menu Master Siswa.
+            Tidak ada entri absensi pada hari Sabtu dan Minggu. Pilih tanggal hari kerja untuk mengisi absensi.
           </p>
         </div>
       ) : (
         <>
-          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
-            <div className="divide-y divide-outline-variant">
-              {records.map((r) => {
-                const activeAbsent = absentOptions.find((o) => o.key === r.status);
-                return (
-                  <div key={r.studentId} className="p-4 flex items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-on-surface truncate">{r.name}</p>
-                      <p className="text-xs text-on-surface-variant font-mono">{r.nisn}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {r.status === "H" && (
-                        <span className="text-xs font-medium bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200">
-                          Hadir
-                        </span>
-                      )}
-                      {absentOptions.map((opt) => {
-                        const isActive = activeAbsent?.key === opt.key;
-                        return (
-                          <button
-                            key={opt.key}
-                            onClick={() => setStatus(r.studentId, opt.key)}
-                            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                              isActive
-                                ? `${opt.color} text-white ${opt.border}`
-                                : "border-outline-variant text-on-surface-variant hover:bg-surface-container"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+          {/* Absent Summary Bar */}
+          {records.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 mb-6 shadow-sm">
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="text-sm font-semibold text-on-surface">Ringkasan:</span>
+                {absentOptions.map((opt) => (
+                  <div key={opt.key} className="flex items-center gap-1.5">
+                    <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${absentOptions.find((o) => o.key === opt.key)?.color}`}>
+                      {opt.key}
+                    </span>
+                    <span className="text-sm text-on-surface">
+                      {opt.label}: <strong>{absentCounts[opt.key] || 0}</strong>
+                    </span>
                   </div>
-                );
-              })}
+                ))}
+                <span className="text-sm text-on-surface-variant ml-auto">Total: {records.length} siswa</span>
+                <span className="text-sm text-emerald-600 font-medium">
+                  Hadir: {records.length - (absentCounts.A + absentCounts.I + absentCounts.S + absentCounts.T)}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-primary text-on-primary font-semibold text-sm h-12 px-8 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-md disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined">save</span>
-                {saving ? "Menyimpan..." : "Simpan Absensi"}
-              </button>
-              <button
-                onClick={handleSendWA}
-                className="bg-[#25D366] text-white font-semibold text-sm h-12 px-8 rounded-xl flex items-center justify-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
-              >
-                <span className="material-symbols-outlined">send</span>
-                Kirim Laporan ke WA
-              </button>
+          {/* Student List */}
+          {!selectedClassId ? (
+            <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
+              <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">edit_note</span>
+              <h3 className="font-bold text-lg text-on-surface mb-2">Pilih Kelas Terlebih Dahulu</h3>
+              <p className="text-sm text-on-surface-variant">Pilih kelas dan tanggal di atas untuk mulai mengisi absensi.</p>
             </div>
-            <p className="text-xs text-on-surface-variant italic">
-              <span className="material-symbols-outlined text-[16px] text-primary align-sub mr-1">info</span>
-              Hapus tanda jika siswa seharusnya Hadir. Simpan terlebih dahulu sebelum mengirim ke WA.
-            </p>
-          </div>
+          ) : loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : records.length === 0 ? (
+            <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
+              <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">person_off</span>
+              <h3 className="font-bold text-lg text-on-surface mb-2">Belum Ada Siswa di Kelas Ini</h3>
+              <p className="text-sm text-on-surface-variant">
+                Tambahkan siswa ke kelas {selectedClassName} melalui menu Master Siswa.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
+                <div className="divide-y divide-outline-variant">
+                  {records.map((r) => {
+                    const activeAbsent = absentOptions.find((o) => o.key === r.status);
+                    return (
+                      <div key={r.studentId} className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-on-surface truncate">{r.name}</p>
+                          <p className="text-xs text-on-surface-variant font-mono">{r.nisn}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {r.status === "H" && (
+                            <span className="text-xs font-medium bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200">
+                              Hadir
+                            </span>
+                          )}
+                          {absentOptions.map((opt) => {
+                            const isActive = activeAbsent?.key === opt.key;
+                            return (
+                              <button
+                                key={opt.key}
+                                onClick={() => setStatus(r.studentId, opt.key)}
+                                className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                  isActive
+                                    ? `${opt.color} text-white ${opt.border}`
+                                    : "border-outline-variant text-on-surface-variant hover:bg-surface-container"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-primary text-on-primary font-semibold text-sm h-12 px-8 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-md disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined">save</span>
+                    {saving ? "Menyimpan..." : "Simpan Absensi"}
+                  </button>
+                  <button
+                    onClick={handleSendWA}
+                    className="bg-[#25D366] text-white font-semibold text-sm h-12 px-8 rounded-xl flex items-center justify-center gap-2 hover:brightness-105 active:scale-95 transition-all shadow-md"
+                  >
+                    <span className="material-symbols-outlined">send</span>
+                    Kirim Laporan ke WA
+                  </button>
+                </div>
+                <p className="text-xs text-on-surface-variant italic">
+                  <span className="material-symbols-outlined text-[16px] text-primary align-sub mr-1">info</span>
+                  Hapus tanda jika siswa seharusnya Hadir. Simpan terlebih dahulu sebelum mengirim ke WA.
+                </p>
+              </div>
+            </>
+          )}
         </>
       )}
 
