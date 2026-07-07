@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/browser-client";
 
 const navItems = [
   { href: "/", icon: "dashboard", label: "Dashboard" },
@@ -17,8 +16,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    const supabase = createBrowserClient();
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
   };
 
