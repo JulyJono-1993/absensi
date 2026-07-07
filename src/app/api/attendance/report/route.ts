@@ -18,6 +18,12 @@ export async function GET(req: NextRequest) {
   const { data: records, error: attError } = await supabase.from("attendance").select("*, students(name, nisn), classes(name)").eq("class_id", parseInt(classId)).eq("date", date);
   if (attError) return NextResponse.json({ error: attError.message }, { status: 500 });
 
+  const { count: totalSiswa, error: countError } = await supabase
+    .from("students")
+    .select("*", { count: "exact", head: true })
+    .eq("class_id", parseInt(classId));
+  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
+
   const className = classInfo.name;
   const waGroupLink = classInfo.wa_group_link || null;
   const formattedDate = new Date(date).toLocaleDateString("id-ID", {
@@ -42,8 +48,8 @@ export async function GET(req: NextRequest) {
     T: [],
   };
 
+  const total = totalSiswa || 0;
   let totalHadir = 0;
-  let totalSiswa = records.length;
 
   for (const r of records) {
     const status = (r as any).status;
@@ -53,6 +59,8 @@ export async function GET(req: NextRequest) {
       grouped[status].push((r as any).students?.name || "");
     }
   }
+
+  totalHadir = total - records.length;
 
   let message = `📋 *LAPORAN ABSENSI HARIAN*\n`;
   message += `━━━━━━━━━━━━━━━━━━\n`;
@@ -95,7 +103,7 @@ export async function GET(req: NextRequest) {
     summary: {
       className,
       date: formattedDate,
-      total: totalSiswa,
+      total,
       hadir: totalHadir,
       alpa: grouped.A.length,
       izin: grouped.I.length,
