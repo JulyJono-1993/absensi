@@ -31,7 +31,19 @@ interface MonthlyData {
   students: { name: string; nisn: string; summary: Record<string, number>; percentage: number }[];
 }
 
-type PrintData = DailyData | WeeklyData | MonthlyData | null;
+interface SemesterData {
+  type: "semester";
+  semester: number;
+  year: number;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  statusKeys: string[];
+  statusLabels: Record<string, string>;
+  students: { name: string; nisn: string; summary: Record<string, number>; percentage: number }[];
+}
+
+type PrintData = DailyData | WeeklyData | MonthlyData | SemesterData | null;
 
 const statusStyle: Record<string, string> = {
   H: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -44,7 +56,7 @@ const statusStyle: Record<string, string> = {
 export default function PrintPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "semester">("daily");
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -75,7 +87,7 @@ export default function PrintPage() {
       classId: selectedClassId,
       period,
     });
-    if (period === "daily" || period === "weekly") {
+    if (period === "daily" || period === "weekly" || period === "semester") {
       params.set("date", date);
     } else {
       params.set("month", month);
@@ -151,15 +163,16 @@ export default function PrintPage() {
             <label className="text-sm font-semibold text-on-surface-variant">Periode</label>
             <select
               value={period}
-              onChange={(e) => setPeriod(e.target.value as "daily" | "weekly" | "monthly")}
+              onChange={(e) => setPeriod(e.target.value as "daily" | "weekly" | "monthly" | "semester")}
               className="w-full bg-surface-container-lowest border border-outline-variant rounded-xl h-12 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
             >
               <option value="daily">Harian</option>
               <option value="weekly">Mingguan</option>
               <option value="monthly">Bulanan</option>
+              <option value="semester">Semester</option>
             </select>
           </div>
-          {(period === "daily" || period === "weekly") && (
+          {(period === "daily" || period === "weekly" || period === "semester") && (
             <div className="space-y-1">
               <label className="text-sm font-semibold text-on-surface-variant">Tanggal</label>
               <input
@@ -223,8 +236,9 @@ export default function PrintPage() {
                   {data.type === "daily" && formatDate(data.date)}
                   {data.type === "weekly" && `${formatDate(data.startDate)} - ${formatDate(data.endDate)}`}
                   {data.type === "monthly" && formatMonth(data.month)}
+                  {data.type === "semester" && `Semester ${data.semester} (${formatDate(data.startDate)} - ${formatDate(data.endDate)})`}
                 </p>
-                <p className="text-xs text-on-surface-variant capitalize">{data.type === "daily" ? "Harian" : data.type === "weekly" ? "Mingguan" : "Bulanan"}</p>
+                <p className="text-xs text-on-surface-variant capitalize">{data.type === "daily" ? "Harian" : data.type === "weekly" ? "Mingguan" : data.type === "monthly" ? "Bulanan" : "Semester"}</p>
               </div>
             </div>
           </div>
@@ -298,8 +312,8 @@ export default function PrintPage() {
             </div>
           )}
 
-          {/* Monthly Summary Table */}
-          {data.type === "monthly" && (
+          {/* Semester Summary Table */}
+          {data.type === "semester" && (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>

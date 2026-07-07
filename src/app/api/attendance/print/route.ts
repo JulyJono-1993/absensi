@@ -143,5 +143,66 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  if (period === "semester") {
+    if (!date) return NextResponse.json({ error: "date wajib diisi" }, { status: 400 });
+    const target = new Date(date);
+    const year = target.getFullYear();
+    const semester = target.getMonth() < 6 ? 1 : 2;
+    const startMonth = semester === 1 ? 0 : 6;
+
+    const startStr = `${year}-${String(startMonth + 1).padStart(2, "0")}-01`;
+    const last = new Date(year, startMonth + 6, 0);
+    const endStr = last.toISOString().split("T")[0];
+
+    const { data: attendanceList } = await supabase
+      .from("attendance")
+      .select("*")
+      .eq("class_id", parseInt(classId))
+      .gte("date", startStr)
+      .lte("date", endStr);
+
+    const attendanceMap = new Map((attendanceList || []).map((a: any) => [`${a.student_id}|${a.date}`, a.status]));
+
+    const days: string[] = [];
+    const cur = new Date(year, startMonth, 1);
+    while (cur <= last) {
+      days.push(cur.toISOString().split("T")[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+    const totalDays = days.length;
+
+    const statusLabels: Record<string, string> = { H: "Hadir", A: "Alpa", I: "Izin", S: "Sakit", T: "Terlambat" };
+    const statusKeys = ["H", "A", "I", "S", "T"];
+
+    const students = studentList.map((s: any) => {
+      const summary: Record<string, number> = { H: 0, A: 0, I: 0, S: 0, T: 0 };
+      for (const d of days) {
+        const key = attendanceMap.get(`${s.id}|${d}`) || "H";
+        summary[key] = (summary[key] || 0) + 1;
+      }
+      const totalPresent = summary.H;
+      const percentage = totalDays > 0 ? Math.round((totalPresent / totalDays) * 100) : 0;
+
+      return {
+        name: s.name,
+        nisn: s.nisn,
+        summary,
+        percentage,
+      };
+    });
+
+    return NextResponse.json({
+      type: "semester",
+      semester,
+      year,
+      startDate: startStr,
+      endDate: endStr,
+      totalDays,
+      statusKeys,
+      statusLabels,
+      students,
+    });
+  }
+
   return NextResponse.json({ error: "Period tidak valid" }, { status: 400 });
 }
