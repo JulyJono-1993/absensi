@@ -12,10 +12,7 @@ export async function GET() {
   const classIds = [...new Set((todayAttendance || []).map((r: any) => r.class_id))];
 
   const studentsPerClass: Record<number, number> = {};
-  const absentPerClass: Record<number, number> = {};
-  for (const r of todayAttendance || []) {
-    absentPerClass[r.class_id] = (absentPerClass[r.class_id] || 0) + 1;
-  }
+  const perClass: Record<number, { rows: number; H: number; A: number; I: number; S: number; T: number }> = {};
 
   if (classIds.length > 0) {
     const { data: studentsByClass } = await supabase
@@ -27,17 +24,38 @@ export async function GET() {
     }
   }
 
-  let totalHadir = 0;
-  for (const cid of classIds) {
-    const totalInClass = studentsPerClass[cid] || 0;
-    const absentInClass = absentPerClass[cid] || 0;
-    totalHadir += totalInClass - absentInClass;
+  for (const r of todayAttendance || []) {
+    const cid = r.class_id;
+    if (!perClass[cid]) perClass[cid] = { rows: 0, H: 0, A: 0, I: 0, S: 0, T: 0 };
+    perClass[cid].rows += 1;
+    if (r.status in perClass[cid]) {
+      (perClass[cid] as any)[r.status] += 1;
+    }
   }
 
-  const statusCounts: Record<string, number> = { H: totalHadir, A: 0, I: 0, S: 0, T: 0 };
-  for (const row of todayAttendance || []) {
-    statusCounts[row.status] = row.status in statusCounts ? statusCounts[row.status] + 1 : 1;
+  let totalHadir = 0;
+  let totalAlpa = 0;
+  let totalIzin = 0;
+  let totalSakit = 0;
+  let totalTerlambat = 0;
+
+  for (const cid of classIds) {
+    const totalInClass = studentsPerClass[cid] || 0;
+    const pc = perClass[cid] || { rows: 0, H: 0, A: 0, I: 0, S: 0, T: 0 };
+    totalHadir += pc.H;
+    totalAlpa += pc.A + (totalInClass - pc.rows);
+    totalIzin += pc.I;
+    totalSakit += pc.S;
+    totalTerlambat += pc.T;
   }
+
+  const statusCounts: Record<string, number> = {
+    H: totalHadir,
+    A: totalAlpa,
+    I: totalIzin,
+    S: totalSakit,
+    T: totalTerlambat,
+  };
 
   const { data: recentAttendance } = await supabase.from("attendance").select("date, status, created_at, students(name), classes(name)").order("date", { ascending: false }).limit(10);
 

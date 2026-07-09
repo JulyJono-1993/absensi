@@ -4,10 +4,14 @@ import { supabase } from "@/lib/supabase";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const classId = searchParams.get("classId");
+  const q = searchParams.get("q")?.trim();
 
   let query = supabase.from("students").select("*, classes(name)").order("name", { ascending: true });
   if (classId) {
     query = query.eq("class_id", parseInt(classId));
+  }
+  if (q) {
+    query = query.or(`name.ilike.%${q}%,nisn.ilike.%${q}%`);
   }
 
   const { data, error } = await query;
@@ -19,6 +23,7 @@ export async function GET(req: NextRequest) {
     nisn: s.nisn,
     classId: s.class_id,
     className: s.classes?.[0]?.name || "",
+    rfidUid: s.rfid_uid || null,
     createdAt: s.created_at,
   }));
 

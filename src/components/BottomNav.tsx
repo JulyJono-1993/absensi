@@ -7,7 +7,9 @@ const navItems = [
   { href: "/", icon: "dashboard", label: "Home" },
   { href: "/classes", icon: "school", label: "Kelas" },
   { href: "/students", icon: "person", label: "Siswa" },
-  { href: "/attendance", icon: "edit_note", label: "Absensi" },
+  { href: "/attendance", icon: "edit_note", label: "Absen" },
+  { href: "/rfid", icon: "search", label: "RFID" },
+  { href: "/scan", icon: "scan", label: "Scan" },
   { href: "/reports", icon: "assessment", label: "Laporan" },
   { href: "/print", icon: "print", label: "Cetak" },
 ];

@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const students = studentList.map((s: any) => ({
       name: s.name,
       nisn: s.nisn,
-      status: attendanceMap.get(s.id) || "H",
+      status: attendanceMap.get(s.id) || "A",
     }));
 
     return NextResponse.json({
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     }
 
     const students = studentList.map((s: any) => {
-      const statuses = days.map((d) => attendanceMap.get(`${s.id}|${d}`) || "H");
+      const statuses = days.map((d) => attendanceMap.get(`${s.id}|${d}`) || "A");
       return {
         name: s.name,
         nisn: s.nisn,
@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
     const students = studentList.map((s: any) => {
       const summary: Record<string, number> = { H: 0, A: 0, I: 0, S: 0, T: 0 };
       for (const d of days) {
-        const key = attendanceMap.get(`${s.id}|${d}`) || "H";
+        const key = attendanceMap.get(`${s.id}|${d}`) || "A";
         summary[key] = (summary[key] || 0) + 1;
       }
       const totalPresent = summary.H;
@@ -177,7 +177,7 @@ export async function GET(req: NextRequest) {
     const students = studentList.map((s: any) => {
       const summary: Record<string, number> = { H: 0, A: 0, I: 0, S: 0, T: 0 };
       for (const d of days) {
-        const key = attendanceMap.get(`${s.id}|${d}`) || "H";
+        const key = attendanceMap.get(`${s.id}|${d}`) || "A";
         summary[key] = (summary[key] || 0) + 1;
       }
       const totalPresent = summary.H;

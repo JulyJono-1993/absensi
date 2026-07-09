@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Toast } from "@/components/Toast";
+import { Pagination } from "@/components/Pagination";
 
 interface ClassItem {
   id: number;
@@ -15,7 +16,8 @@ interface AttendanceRecord {
   status: string;
 }
 
-const absentOptions = [
+const statusOptions = [
+  { key: "H", label: "Hadir", color: "bg-emerald-600", border: "border-emerald-600" },
   { key: "A", label: "Alpa", color: "bg-rose-600", border: "border-rose-600" },
   { key: "I", label: "Izin", color: "bg-amber-600", border: "border-amber-600" },
   { key: "S", label: "Sakit", color: "bg-sky-600", border: "border-sky-600" },
@@ -30,6 +32,8 @@ export default function AttendancePage() {
     return d.toISOString().split("T")[0];
   });
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", description: "", type: "success" as "success" | "error" | "info" });
@@ -73,16 +77,17 @@ export default function AttendancePage() {
     }
   }, [selectedClassId, selectedDate, fetchAttendance]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [selectedClassId, selectedDate]);
+
+  const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedRecords = records.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   const setStatus = (studentId: number, status: string) => {
     setRecords((prev) =>
-      prev.map((r) => {
-        if (r.studentId !== studentId) return r;
-        const currentAbsent = absentOptions.find((o) => o.key === r.status);
-        if (currentAbsent && currentAbsent.key === status) {
-          return { ...r, status: "H" };
-        }
-        return { ...r, status };
-      })
+      prev.map((r) => (r.studentId === studentId ? { ...r, status } : r))
     );
   };
 
@@ -90,20 +95,13 @@ export default function AttendancePage() {
     if (!selectedClassId || records.length === 0) return;
     setSaving(true);
 
-    const absentRecords = records
-      .filter((r) => r.status !== "H")
-      .map((r) => ({
-        studentId: r.studentId,
-        status: r.status,
-      }));
-
     const res = await fetch("/api/attendance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         classId: selectedClassId,
         date: selectedDate,
-        records: absentRecords,
+        records: records.map((r) => ({ studentId: r.studentId, status: r.status })),
       }),
     });
 
@@ -119,6 +117,27 @@ export default function AttendancePage() {
       });
     } else {
       setToast({ show: true, message: "Gagal Menyimpan", description: "Terjadi kesalahan.", type: "error" });
+    }
+  };
+
+  const handleAutoAlpa = async () => {
+    if (!selectedClassId) return;
+    const res = await fetch("/api/attendance/auto-alpa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ classId: selectedClassId, date: selectedDate }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setToast({
+        show: true,
+        message: "Auto-Alpa Selesai",
+        description: `${data.marked} siswa yang belum tercatat ditandai Alpa.`,
+        type: "info",
+      });
+      fetchAttendance();
+    } else {
+      setToast({ show: true, message: "Gagal", description: data.error || "Terjadi kesalahan.", type: "error" });
     }
   };
 
@@ -140,11 +159,9 @@ export default function AttendancePage() {
     return day === 0 || day === 6;
   })();
 
-  const absentCounts = records.reduce(
+  const statusCounts = records.reduce(
     (acc, r) => {
-      if (r.status !== "H") {
-        acc[r.status] = (acc[r.status] || 0) + 1;
-      }
+      acc[r.status] = (acc[r.status] || 0) + 1;
       return acc;
     },
     {} as Record<string, number>
@@ -156,7 +173,8 @@ export default function AttendancePage() {
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">Entri Absensi Harian</h2>
           <p className="text-sm text-on-surface-variant">
-            Semua siswa dianggap <strong>Hadir</strong> secara default. Klik tombol di bawah untuk menandai siswa yang tidak hadir.
+            Secara default semua siswa dianggap <strong>Alpa</strong>. Tandai yang <strong>Hadir</strong> atau
+            gunakan tombol <strong>Tandai Alpa Otomatis</strong> untuk siswa yang tidak scan / belum diisi manual.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
@@ -200,19 +218,19 @@ export default function AttendancePage() {
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 mb-6 shadow-sm">
               <div className="flex flex-wrap items-center gap-4">
                 <span className="text-sm font-semibold text-on-surface">Ringkasan:</span>
-                {absentOptions.map((opt) => (
+                {statusOptions.map((opt) => (
                   <div key={opt.key} className="flex items-center gap-1.5">
-                    <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${absentOptions.find((o) => o.key === opt.key)?.color}`}>
+                    <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${opt.color}`}>
                       {opt.key}
                     </span>
                     <span className="text-sm text-on-surface">
-                      {opt.label}: <strong>{absentCounts[opt.key] || 0}</strong>
+                      {opt.label}: <strong>{statusCounts[opt.key] || 0}</strong>
                     </span>
                   </div>
                 ))}
                 <span className="text-sm text-on-surface-variant ml-auto">Total: {records.length} siswa</span>
                 <span className="text-sm text-emerald-600 font-medium">
-                  Hadir: {records.length - (absentCounts.A + absentCounts.I + absentCounts.S + absentCounts.T)}
+                  Hadir: {statusCounts.H || 0}
                 </span>
               </div>
             </div>
@@ -241,22 +259,16 @@ export default function AttendancePage() {
             <>
               <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
                 <div className="divide-y divide-outline-variant">
-                  {records.map((r) => {
-                    const activeAbsent = absentOptions.find((o) => o.key === r.status);
+                  {pagedRecords.map((r) => {
                     return (
                       <div key={r.studentId} className="p-4 flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-on-surface truncate">{r.name}</p>
                           <p className="text-xs text-on-surface-variant font-mono">{r.nisn}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {r.status === "H" && (
-                            <span className="text-xs font-medium bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200">
-                              Hadir
-                            </span>
-                          )}
-                          {absentOptions.map((opt) => {
-                            const isActive = activeAbsent?.key === opt.key;
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {statusOptions.map((opt) => {
+                            const isActive = r.status === opt.key;
                             return (
                               <button
                                 key={opt.key}
@@ -278,6 +290,14 @@ export default function AttendancePage() {
                 </div>
               </div>
 
+              <Pagination
+                page={safePage}
+                totalPages={totalPages}
+                totalItems={records.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+              />
+
               <div className="mt-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <button
@@ -287,6 +307,13 @@ export default function AttendancePage() {
                   >
                     <span className="material-symbols-outlined">save</span>
                     {saving ? "Menyimpan..." : "Simpan Absensi"}
+                  </button>
+                  <button
+                    onClick={handleAutoAlpa}
+                    className="bg-surface-container-lowest border border-outline-variant text-on-surface font-semibold text-sm h-12 px-6 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined">auto_awesome</span>
+                    Tandai Alpa Otomatis
                   </button>
                   <button
                     onClick={handleSendWA}

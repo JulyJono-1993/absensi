@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Kelas tidak ditemukan" }, { status: 404 });
   }
 
-  const { data: records, error: attError } = await supabase.from("attendance").select("*, students(name, nisn), classes(name)").eq("class_id", parseInt(classId)).eq("date", date);
+  const { data: records, error: attError } = await supabase.rpc("get_attendance", {
+    p_class_id: parseInt(classId),
+    p_date: date,
+  });
   if (attError) return NextResponse.json({ error: attError.message }, { status: 500 });
 
   const { count: totalSiswa, error: countError } = await supabase
@@ -56,11 +59,9 @@ export async function GET(req: NextRequest) {
     if (status === "H") {
       totalHadir++;
     } else if (grouped[status]) {
-      grouped[status].push((r as any).students?.name || "");
+      grouped[status].push((r as any).name || "");
     }
   }
-
-  totalHadir = total - records.length;
 
   let message = `📋 *LAPORAN ABSENSI HARIAN*\n`;
   message += `━━━━━━━━━━━━━━━━━━\n`;

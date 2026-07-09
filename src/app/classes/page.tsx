@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Modal } from "@/components/Modal";
 import { Toast } from "@/components/Toast";
+import { Pagination } from "@/components/Pagination";
 
 interface ClassItem {
   id: number;
@@ -19,6 +20,8 @@ export default function ClassesPage() {
   const [name, setName] = useState("");
   const [waGroupLink, setWaGroupLink] = useState("");
   const [toast, setToast] = useState({ show: false, message: "", description: "", type: "success" as const });
+  const [page, setPage] = useState(1);
+  const pageSize = 9;
 
   const fetchClasses = useCallback(async () => {
     const res = await fetch("/api/classes");
@@ -76,6 +79,10 @@ export default function ClassesPage() {
     fetchClasses();
   };
 
+  const totalPages = Math.max(1, Math.ceil(classes.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedClasses = classes.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
@@ -110,8 +117,9 @@ export default function ClassesPage() {
           </button>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {classes.map((cls) => (
+          {pagedClasses.map((cls) => (
             <div
               key={cls.id}
               className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 shadow-sm hover:shadow-md transition-shadow"
@@ -156,6 +164,15 @@ export default function ClassesPage() {
             </div>
           ))}
         </div>
+
+        <Pagination
+          page={safePage}
+          totalPages={totalPages}
+          totalItems={classes.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
+        </>
       )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editItem ? "Edit Kelas" : "Tambah Kelas Baru"}>

@@ -10,19 +10,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "classId dan date wajib diisi" }, { status: 400 });
   }
 
-  const { data: studentList, error: stuError } = await supabase.from("students").select("*").eq("class_id", parseInt(classId)).order("name", { ascending: true });
-  if (stuError) return NextResponse.json({ error: stuError.message }, { status: 500 });
-
-  const { data: existingAttendance, error: attError } = await supabase.from("attendance").select("*").eq("class_id", parseInt(classId)).eq("date", date);
+  const { data, error: attError } = await supabase.rpc("get_attendance", {
+    p_class_id: parseInt(classId),
+    p_date: date,
+  });
   if (attError) return NextResponse.json({ error: attError.message }, { status: 500 });
 
-  const attendanceMap = new Map((existingAttendance || []).map((a: any) => [a.student_id, a.status]));
-
-  const result = (studentList || []).map((s: any) => ({
-    studentId: s.id,
-    name: s.name,
-    nisn: s.nisn,
-    status: attendanceMap.get(s.id) || "H",
+  const result = (data || []).map((r: any) => ({
+    studentId: r.student_id,
+    name: r.name,
+    nisn: r.nisn,
+    status: r.status || "A",
+    scanTime: r.scan_time,
+    scanMethod: r.scan_method,
   }));
 
   return NextResponse.json(result);
@@ -37,8 +37,6 @@ export async function POST(req: NextRequest) {
   }
 
   const classIdNum = parseInt(classId);
-  const { error: deleteError } = await supabase.from("attendance").delete().eq("class_id", classIdNum).eq("date", date);
-  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
   if (records.length > 0) {
     const values = records.map((r: { studentId: number; status: string }) => ({
@@ -46,9 +44,12 @@ export async function POST(req: NextRequest) {
       class_id: classIdNum,
       date,
       status: r.status,
+      scan_method: "manual",
     }));
-    const { error: insertError } = await supabase.from("attendance").insert(values);
-    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+    const { error: upsertError } = await supabase
+      .from("attendance")
+      .upsert(values, { onConflict: "student_id,date" });
+    if (upsertError) return NextResponse.json({ error: upsertError.message }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, count: records.length });

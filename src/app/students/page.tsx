@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Modal } from "@/components/Modal";
 import { Toast } from "@/components/Toast";
+import { Pagination } from "@/components/Pagination";
 
 interface Student {
   id: number;
@@ -29,6 +30,8 @@ export default function StudentsPage() {
   const [classId, setClassId] = useState("");
   const [csvText, setCsvText] = useState("");
   const [importClassId, setImportClassId] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [toast, setToast] = useState({ show: false, message: "", description: "", type: "success" as "success" | "error" | "info" });
 
   const fetchStudents = useCallback(async () => {
@@ -52,6 +55,10 @@ export default function StudentsPage() {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterClassId]);
 
   const handleAdd = async () => {
     if (!name.trim() || !nisn.trim() || !classId) return;
@@ -116,6 +123,10 @@ export default function StudentsPage() {
     fetchStudents();
   };
 
+  const totalPages = Math.max(1, Math.ceil(students.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedStudents = students.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
@@ -174,6 +185,7 @@ export default function StudentsPage() {
           </p>
         </div>
       ) : (
+        <>
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
@@ -188,9 +200,9 @@ export default function StudentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
-                {students.map((s, i) => (
+                {pagedStudents.map((s, i) => (
                   <tr key={s.id} className="hover:bg-surface-container-low/50 transition-colors">
-                    <td className="p-4 text-sm text-on-surface-variant">{i + 1}</td>
+                    <td className="p-4 text-sm text-on-surface-variant">{(page - 1) * pageSize + i + 1}</td>
                     <td className="p-4 text-sm font-medium text-on-surface">{s.name}</td>
                     <td className="p-4 text-sm text-outline font-mono">{s.nisn}</td>
                     <td className="p-4">
@@ -214,7 +226,7 @@ export default function StudentsPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-outline-variant">
-            {students.map((s) => (
+            {pagedStudents.map((s) => (
               <div key={s.id} className="p-4 flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm text-on-surface">{s.name}</p>
@@ -233,6 +245,15 @@ export default function StudentsPage() {
             ))}
           </div>
         </div>
+
+        <Pagination
+          page={safePage}
+          totalPages={totalPages}
+          totalItems={students.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
+        </>
       )}
 
       {/* Add Student Modal */}

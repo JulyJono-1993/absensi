@@ -8,6 +8,8 @@ const navItems = [
   { href: "/classes", icon: "school", label: "Master Kelas" },
   { href: "/students", icon: "person", label: "Master Siswa" },
   { href: "/attendance", icon: "edit_note", label: "Entri Absensi" },
+  { href: "/rfid", icon: "search", label: "Registrasi RFID" },
+  { href: "/scan", icon: "scan", label: "Scan RFID" },
   { href: "/reports", icon: "assessment", label: "Laporan" },
   { href: "/print", icon: "print", label: "Cetak" },
 ];
