@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { logout } from "@/lib/auth";
 
 const navItems = [
   { href: "/", icon: "dashboard", label: "Dashboard" },
@@ -15,11 +13,12 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
+    await logout();
+    navigate("/login");
   };
 
   return (
@@ -37,11 +36,11 @@ export function Sidebar() {
       </div>
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = location.pathname === item.href;
           return (
             <Link
               key={item.href}
-              href={item.href}
+              to={item.href}
               className={
                 isActive
                   ? "bg-primary-container text-on-primary-container font-bold rounded-lg mx-2 px-4 py-3 flex items-center gap-3"

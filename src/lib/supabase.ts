@@ -1,15 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL;
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!url || !key) {
-  throw new Error("SUPABASE_URL and SUPABASE_ANON_KEY are required");
+  throw new Error(
+    "VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY wajib diisi di file .env"
+  );
 }
 
 export const supabase = createClient(url, key, {
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
   },
 });

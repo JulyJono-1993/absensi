@@ -1,4 +1,6 @@
-
-.next/
+dist/
 node_modules/
 .env
+.env.example
+.htaccess
+.next

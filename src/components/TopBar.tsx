@@ -1,9 +1,12 @@
-"use client";
+import { useNavigate } from "react-router-dom";
+import { logout } from "@/lib/auth";
 
 export function TopBar() {
+  const navigate = useNavigate();
+
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
+    await logout();
+    navigate("/login");
   };
 
   return (
