@@ -134,7 +134,7 @@ $$;
 -- ----------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.record_rfid_scan(
   p_rfid_uid TEXT,
-  p_date     DATE DEFAULT CURRENT_DATE
+  p_date     DATE DEFAULT (now() AT TIME ZONE 'Asia/Jakarta')::DATE
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -180,8 +180,8 @@ BEGIN
     FROM school_settings
    LIMIT 1;
 
-  -- tentukan status berdasarkan batas jam masuk
-  v_status := CASE WHEN CURRENT_TIME <= v_batas THEN 'H' ELSE 'T' END;
+  -- tentukan status berdasarkan batas jam masuk (pakai zona waktu Indonesia Barat)
+  v_status := CASE WHEN (now() AT TIME ZONE 'Asia/Jakarta')::time <= v_batas THEN 'H' ELSE 'T' END;
 
   INSERT INTO attendance (student_id, class_id, date, status, scan_time, scan_method)
   VALUES (v_student.id, v_student.class_id, p_date, v_status, NOW(), 'rfid')
@@ -244,7 +244,7 @@ $$;
 -- ----------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.auto_fill_alpa(
   p_class_id INTEGER,
-  p_date     DATE DEFAULT CURRENT_DATE
+  p_date     DATE DEFAULT (now() AT TIME ZONE 'Asia/Jakarta')::DATE
 )
 RETURNS INTEGER
 LANGUAGE plpgsql
