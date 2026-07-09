@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,13 +29,13 @@ export default function LoginPage() {
     setDebugInfo("");
 
     try {
-      console.log("[Login] Attempt login with:", email);
+      console.log("[Login] Attempt login with:", identifier);
       setDebugInfo("Mencoba login...");
 
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, password }),
       });
 
       const result = await res.json();
@@ -85,12 +85,12 @@ export default function LoginPage() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-on-surface-variant mb-1">Email</label>
+            <label className="block text-sm font-semibold text-on-surface-variant mb-1">Email atau Username</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@edulearn.com"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="admin@edulearn.com / admin01"
               className="w-full border border-outline-variant rounded-xl h-12 px-4 focus:ring-2 focus:ring-primary focus:border-primary bg-surface-container-lowest text-sm"
               required
             />

@@ -160,6 +160,21 @@ BEGIN
     );
   END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM attendance
+    WHERE student_id = v_student.id AND date = p_date
+  ) THEN
+    RETURN jsonb_build_object(
+      'found',      TRUE,
+      'studentId',  v_student.id,
+      'name',       v_student.name,
+      'nisn',       v_student.nisn,
+      'className',  v_student.class_name,
+      'alreadyScanned', TRUE,
+      'message',    'Sudah absen'
+    );
+  END IF;
+
   SELECT COALESCE(batas_jam_masuk, '07:00'::TIME)
     INTO v_batas
     FROM school_settings
@@ -170,12 +185,6 @@ BEGIN
 
   INSERT INTO attendance (student_id, class_id, date, status, scan_time, scan_method)
   VALUES (v_student.id, v_student.class_id, p_date, v_status, NOW(), 'rfid')
-  ON CONFLICT (student_id, date)
-  DO UPDATE SET
-    status      = EXCLUDED.status,
-    scan_time   = EXCLUDED.scan_time,
-    scan_method = 'rfid',
-    updated_at  = NOW()
   RETURNING scan_time INTO v_scan_time;
 
   RETURN jsonb_build_object(

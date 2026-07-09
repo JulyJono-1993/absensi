@@ -13,6 +13,7 @@ interface ScanResult {
   statusLabel?: string;
   scanTime?: string;
   message?: string;
+  alreadyScanned?: boolean;
 }
 
 interface ScanLog extends ScanResult {
@@ -51,6 +52,8 @@ export default function ScanPage() {
         { ...data, time: new Date().toLocaleTimeString("id-ID"), key: Date.now() + Math.random() },
         ...prev,
       ].slice(0, 30));
+    } catch {
+      setToast({ show: true, message: "Gagal memproses scan", type: "error" });
     } finally {
       processing.current = false;
     }
@@ -69,21 +72,37 @@ export default function ScanPage() {
 
   const saveBatas = async () => {
     setSavingBatas(true);
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ batas_jam_masuk: batas }),
-    });
-    setSavingBatas(false);
-    if (res.ok) {
-      setToast({ show: true, message: "Batas jam masuk disimpan", type: "success" });
-    } else {
-      setToast({ show: true, message: "Gagal menyimpan", type: "error" });
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batas_jam_masuk: batas }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        setToast({ show: true, message: "Batas jam masuk disimpan", type: "success" });
+        await fetch("/api/settings")
+          .then((r) => r.json())
+          .then((d) => {
+            if (d && d.batas_jam_masuk) setBatas(d.batas_jam_masuk);
+          })
+          .catch(() => {});
+      } else {
+        setToast({ show: true, message: `Gagal menyimpan: ${result.error || "Unknown error"}`, type: "error" });
+      }
+    } catch {
+      setToast({ show: true, message: "Gagal menyimpan: Network error", type: "error" });
+    } finally {
+      setSavingBatas(false);
     }
   };
 
   const statusColor =
-    result?.status === "H"
+    result?.alreadyScanned
+      ? "bg-amber-50 border-amber-200 text-amber-700"
+      : result?.status === "H"
       ? "bg-emerald-50 border-emerald-200 text-emerald-700"
       : result?.status === "T"
       ? "bg-purple-50 border-purple-200 text-purple-700"
@@ -128,12 +147,19 @@ export default function ScanPage() {
                   <p className="text-sm mt-1">Kelas: {result.className}</p>
                 </div>
                 <div className="text-center md:text-right">
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 font-bold text-lg">
-                    <span className="material-symbols-outlined">
-                      {result.status === "H" ? "check_circle" : "schedule"}
+                  {result.alreadyScanned ? (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 font-bold text-lg">
+                      <span className="material-symbols-outlined">info</span>
+                      Sudah Absen
                     </span>
-                    {result.statusLabel}
-                  </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 font-bold text-lg">
+                      <span className="material-symbols-outlined">
+                        {result.status === "H" ? "check_circle" : "schedule"}
+                      </span>
+                      {result.statusLabel}
+                    </span>
+                  )}
                   <p className="text-xs mt-2 opacity-70">
                     {result.scanTime
                       ? new Date(result.scanTime).toLocaleTimeString("id-ID")
@@ -196,17 +222,23 @@ export default function ScanPage() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span
-                    className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                      l.status === "H"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : l.status === "T"
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-rose-100 text-rose-700"
-                    }`}
-                  >
-                    {l.found ? l.statusLabel : "?"}
-                  </span>
+                  {l.alreadyScanned ? (
+                    <span className="text-xs font-bold px-2 py-1 rounded-lg bg-amber-100 text-amber-700">
+                      Sudah Absen
+                    </span>
+                  ) : (
+                    <span
+                      className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                        l.status === "H"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : l.status === "T"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-rose-100 text-rose-700"
+                      }`}
+                    >
+                      {l.found ? l.statusLabel : "?"}
+                    </span>
+                  )}
                   <p className="text-xs text-on-surface-variant mt-1">{l.time}</p>
                 </div>
               </div>

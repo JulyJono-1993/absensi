@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 export async function POST(request: Request) {
-  const { email, password } = await request.json();
+  const { identifier, password } = await request.json();
 
   const cookieStore = await cookies();
 
@@ -28,6 +28,25 @@ export async function POST(request: Request) {
       },
     }
   );
+
+  let email = identifier;
+
+  if (!identifier.includes("@")) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("username", identifier)
+      .single();
+
+    if (error || !data?.email) {
+      return NextResponse.json(
+        { error: "Username tidak ditemukan" },
+        { status: 400 }
+      );
+    }
+
+    email = data.email;
+  }
 
   const { error } = await supabase.auth.signInWithPassword({
     email,

@@ -21,8 +21,15 @@ const demoUsers = [
   { email: "siswa@edulearn.com", password: "siswa123", fullName: "Siswa Contoh", role: "student" },
 ];
 
+const usernames = [
+  "admin",
+  "guru",
+  "siswa",
+];
+
 async function createUsers() {
-  for (const user of demoUsers) {
+  for (let i = 0; i < demoUsers.length; i++) {
+    const user = demoUsers[i];
     const { data, error } = await supabase.auth.admin.createUser({
       email: user.email,
       password: user.password,
@@ -30,6 +37,7 @@ async function createUsers() {
       user_metadata: {
         full_name: user.fullName,
         role: user.role,
+        username: usernames[i],
       },
     });
 
@@ -40,14 +48,14 @@ async function createUsers() {
         console.error(`Error creating ${user.email}:`, error.message);
       }
     } else {
-      console.log(`Created user: ${user.email} (${user.role})`);
+      console.log(`Created user: ${user.email} (${user.role}) - username: ${usernames[i]}`);
     }
   }
 
   console.log("\nDone! Demo users ready:");
-  console.log("  admin@edulearn.com / admin123");
-  console.log("  guru@edulearn.com / guru123");
-  console.log("  siswa@edulearn.com / siswa123");
+  console.log("  admin@edulearn.com / admin123 (username: admin)");
+  console.log("  guru@edulearn.com / guru123 (username: guru)");
+  console.log("  siswa@edulearn.com / siswa123 (username: siswa)");
 }
 
 createUsers();
