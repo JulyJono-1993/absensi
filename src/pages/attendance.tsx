@@ -92,6 +92,10 @@ export default function AttendancePage() {
     );
   };
 
+  const handleHadirSemua = () => {
+    setRecords((prev) => prev.map((r) => ({ ...r, status: "H" })));
+  };
+
   const handleSave = async () => {
     if (!selectedClassId || records.length === 0) return;
     setSaving(true);
@@ -308,6 +312,14 @@ export default function AttendancePage() {
                   >
                     <span className="material-symbols-outlined">auto_awesome</span>
                     Tandai Alpa Otomatis
+                  </button>
+                  <button
+                    onClick={handleHadirSemua}
+                    disabled={saving}
+                    className="bg-emerald-600 text-white font-semibold text-sm h-12 px-6 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-md disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined">done_all</span>
+                    Hadir Semua
                   </button>
                   <button
                     onClick={handleSendWA}

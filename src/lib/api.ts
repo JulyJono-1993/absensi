@@ -10,6 +10,13 @@ export function todayLocal(): string {
   return `${y}-${m}-${day}`;
 }
 
+/* Cek apakah tanggal (YYYY-MM-DD) jatuh pada Sabtu/Minggu */
+function isWeekendStr(dateStr: string): boolean {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const day = new Date(y, m - 1, d).getDay();
+  return day === 0 || day === 6;
+}
+
 /* ----------------------------- Stats ----------------------------- */
 export interface Stats {
   totalClasses: number;
@@ -360,6 +367,115 @@ export async function autoAlpa(classId: string, date: string) {
   return { success: true, marked: data };
 }
 
+/* ----------------- Backup / Restore / Hapus ----------------- */
+export interface AttendanceBackupRow {
+  nisn: string;
+  studentName: string;
+  className: string;
+  date: string;
+  status: string;
+  scanTime: string | null;
+  scanMethod: string | null;
+}
+
+export interface AttendanceBackupFile {
+  app: string;
+  type: string;
+  version: number;
+  exportedAt: string;
+  range: { start: string | null; end: string | null };
+  records: AttendanceBackupRow[];
+}
+
+function pickRel<T>(v: T | T[] | null | undefined): T | null {
+  if (Array.isArray(v)) return v.length > 0 ? v[0] : null;
+  return (v as T) ?? null;
+}
+
+export async function getAttendanceBackup(
+  startDate?: string,
+  endDate?: string
+): Promise<AttendanceBackupRow[]> {
+  let query = supabase
+    .from("attendance")
+    .select("date, status, scan_time, scan_method, students(name, nisn), classes(name)")
+    .order("date", { ascending: false });
+
+  if (startDate) query = query.gte("date", startDate);
+  if (endDate) query = query.lte("date", endDate);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return (data || []).map((r: any) => {
+    const stu = pickRel<any>(r.students);
+    const cls = pickRel<any>(r.classes);
+    return {
+      nisn: stu?.nisn || "",
+      studentName: stu?.name || "",
+      className: cls?.name || "",
+      date: r.date,
+      status: r.status,
+      scanTime: r.scan_time || null,
+      scanMethod: r.scan_method || null,
+    };
+  });
+}
+
+export async function deleteAttendanceBackup(
+  startDate?: string,
+  endDate?: string
+): Promise<{ deleted: number }> {
+  let query = supabase.from("attendance").delete({ count: "exact" });
+  if (startDate) query = query.gte("date", startDate);
+  if (endDate) query = query.lte("date", endDate);
+
+  const { count, error } = await query;
+  if (error) throw new Error(error.message);
+  return { deleted: count || 0 };
+}
+
+export async function restoreAttendanceBackup(
+  rows: AttendanceBackupRow[]
+): Promise<{ restored: number; skipped: number }> {
+  const valid = (rows || []).filter((r) => r && r.nisn && r.date && r.status);
+  if (valid.length === 0) return { restored: 0, skipped: rows?.length || 0 };
+
+  const nisns = [...new Set(valid.map((r) => r.nisn))];
+  const { data: students, error: stuError } = await supabase
+    .from("students")
+    .select("id, nisn, class_id")
+    .in("nisn", nisns);
+  if (stuError) throw new Error(stuError.message);
+
+  const map = new Map((students || []).map((s: any) => [s.nisn, s]));
+
+  const values: any[] = [];
+  for (const r of valid) {
+    const s = map.get(r.nisn);
+    if (!s) continue;
+    values.push({
+      student_id: s.id,
+      class_id: s.class_id,
+      date: r.date,
+      status: r.status,
+      scan_time: r.scanTime || null,
+      scan_method: r.scanMethod || "manual",
+    });
+  }
+
+  const skipped = valid.length - values.length;
+
+  if (values.length > 0) {
+    const { error } = await supabase
+      .from("attendance")
+      .upsert(values, { onConflict: "student_id,date" });
+    if (error) throw new Error(error.message);
+  }
+
+  return { restored: values.length, skipped };
+}
+
 /* ----------------------------- RFID ----------------------------- */
 export async function registerRfid(
   studentId: number,
@@ -688,7 +804,8 @@ export async function getPrintData(
     for (let i = 0; i < 7; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
-      days.push(d.toISOString().split("T")[0]);
+      const ds = d.toISOString().split("T")[0];
+      if (!isWeekendStr(ds)) days.push(ds);
     }
 
     const students = studentList.map((s: any) => {
@@ -701,7 +818,7 @@ export async function getPrintData(
     return {
       type: "weekly",
       startDate: days[0],
-      endDate: days[6],
+      endDate: days[days.length - 1],
       days,
       students,
     };
@@ -734,8 +851,10 @@ export async function getPrintData(
     for (let i = 1; i <= daysInMonth; i++) {
       const mm = String(mon).padStart(2, "0");
       const dd = String(i).padStart(2, "0");
-      days.push(`${year}-${mm}-${dd}`);
+      const ds = `${year}-${mm}-${dd}`;
+      if (!isWeekendStr(ds)) days.push(ds);
     }
+    const schoolDays = days.length;
 
     const statusLabels: Record<string, string> = {
       H: "Hadir",
@@ -760,7 +879,7 @@ export async function getPrintData(
       }
       const totalPresent = summary.H + summary.T;
       const percentage =
-        daysInMonth > 0 ? Math.round((totalPresent / daysInMonth) * 100) : 0;
+        schoolDays > 0 ? Math.round((totalPresent / schoolDays) * 100) : 0;
 
       return {
         name: s.name,
@@ -808,7 +927,8 @@ export async function getPrintData(
     const days: string[] = [];
     const cur = new Date(year, startMonth, 1);
     while (cur <= last) {
-      days.push(cur.toISOString().split("T")[0]);
+      const ds = cur.toISOString().split("T")[0];
+      if (!isWeekendStr(ds)) days.push(ds);
       cur.setDate(cur.getDate() + 1);
     }
     const totalDays = days.length;

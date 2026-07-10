@@ -11,6 +11,7 @@ import RfidPage from "@/pages/rfid";
 import ScanPage from "@/pages/scan";
 import ReportsPage from "@/pages/reports";
 import PrintPage from "@/pages/print";
+import BackupPage from "@/pages/backup";
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/scan" element={<ScanPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/print" element={<PrintPage />} />
+            <Route path="/backup" element={<BackupPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

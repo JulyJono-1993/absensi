@@ -10,6 +10,7 @@ const navItems = [
   { href: "/scan", icon: "scan", label: "Scan" },
   { href: "/reports", icon: "assessment", label: "Laporan" },
   { href: "/print", icon: "print", label: "Cetak" },
+  { href: "/backup", icon: "backup", label: "Backup" },
 ];
 
 export function BottomNav() {

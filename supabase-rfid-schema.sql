@@ -173,9 +173,11 @@ BEGIN
     );
   END IF;
 
+  -- Sudah absen MASUK/TERLAMBAT hari ini => tolak scan ulang.
+  -- Status 'A' (alpa hasil auto-fill) masih boleh di-scan untuk hadir.
   IF EXISTS (
     SELECT 1 FROM attendance
-    WHERE student_id = v_student.id AND date = p_date
+    WHERE student_id = v_student.id AND date = p_date AND status IN ('H', 'T')
   ) THEN
     RETURN jsonb_build_object(
       'found',      TRUE,
@@ -198,6 +200,11 @@ BEGIN
 
   INSERT INTO attendance (student_id, class_id, date, status, scan_time, scan_method)
   VALUES (v_student.id, v_student.class_id, p_date, v_status, NOW(), 'rfid')
+  ON CONFLICT (student_id, date) DO UPDATE
+    SET status      = EXCLUDED.status,
+        class_id    = EXCLUDED.class_id,
+        scan_time   = EXCLUDED.scan_time,
+        scan_method = EXCLUDED.scan_method
   RETURNING scan_time INTO v_scan_time;
 
   RETURN jsonb_build_object(
