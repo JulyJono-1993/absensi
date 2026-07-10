@@ -39,6 +39,19 @@ INSERT INTO public.school_settings (id, batas_jam_masuk)
 VALUES (1, '07:00')
 ON CONFLICT (id) DO NOTHING;
 
+-- RLS: siapa saja boleh membaca, hanya user login yang boleh mengubah
+ALTER TABLE public.school_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "school_settings_select" ON public.school_settings;
+CREATE POLICY "school_settings_select" ON public.school_settings
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "school_settings_write" ON public.school_settings;
+CREATE POLICY "school_settings_write" ON public.school_settings
+  FOR ALL
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+
 -- ----------------------------------------------------------
 -- 3. Tambahan kolom pada tabel attendance
 --    scan_time   : waktu presisi saat RFID dipindai

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Toast } from "@/components/Toast";
-import { getClasses, getReport } from "@/lib/api";
+import { getClasses, getReport, todayLocal } from "@/lib/api";
 
 interface ClassItem {
   id: number;
@@ -28,7 +28,7 @@ interface ReportData {
 export default function ReportsPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(() => todayLocal());
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", description: "", type: "success" as "success" | "error" | "info" });

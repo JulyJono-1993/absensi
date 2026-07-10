@@ -7,6 +7,7 @@ import {
   saveAttendance,
   autoAlpa,
   getReport,
+  todayLocal,
 } from "@/lib/api";
 
 interface ClassItem {
@@ -32,10 +33,7 @@ const statusOptions = [
 export default function AttendancePage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().split("T")[0];
-  });
+  const [selectedDate, setSelectedDate] = useState(() => todayLocal());
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 10;

@@ -1,5 +1,15 @@
 import { supabase } from "./supabase";
 
+/* Tanggal hari ini dalam timezone lokal (bukan UTC) agar scan di pagi hari
+   tidak salah menghitung sebagai hari sebelumnya. */
+export function todayLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 /* ----------------------------- Stats ----------------------------- */
 export interface Stats {
   totalClasses: number;
@@ -14,7 +24,7 @@ export interface Stats {
 }
 
 export async function getStats(): Promise<Stats> {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayLocal();
 
   const { count: classCount } = await supabase
     .from("classes")
@@ -344,7 +354,7 @@ export async function deleteAttendance(classId: string, date: string) {
 export async function autoAlpa(classId: string, date: string) {
   const { data, error } = await supabase.rpc("auto_fill_alpa", {
     p_class_id: parseInt(classId),
-    p_date: date || new Date().toISOString().split("T")[0],
+    p_date: date || todayLocal(),
   });
   if (error) throw new Error(error.message);
   return { success: true, marked: data };
@@ -366,7 +376,7 @@ export async function registerRfid(
 export async function scanRfid(rfid: string, date?: string) {
   const { data, error } = await supabase.rpc("record_rfid_scan", {
     p_rfid_uid: rfid,
-    p_date: date || new Date().toISOString().split("T")[0],
+    p_date: date || todayLocal(),
   });
   if (error) throw new Error(error.message);
   return data;

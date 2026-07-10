@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Toast } from "@/components/Toast";
-import { getClasses, getPrintData } from "@/lib/api";
+import { getClasses, getPrintData, todayLocal } from "@/lib/api";
 
 interface ClassItem {
   id: number;
@@ -56,7 +56,7 @@ export default function PrintPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "semester">("daily");
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(() => todayLocal());
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
