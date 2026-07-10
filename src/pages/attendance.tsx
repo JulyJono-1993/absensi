@@ -261,7 +261,6 @@ export default function AttendancePage() {
                       <div key={r.studentId} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-medium text-sm text-on-surface break-words">{r.name}</p>
-                          <p className="text-xs text-on-surface-variant font-mono">{r.nisn}</p>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap sm:justify-end">
                           {statusOptions.map((opt) => {
