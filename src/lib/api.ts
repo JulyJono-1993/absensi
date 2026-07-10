@@ -272,20 +272,39 @@ export async function getAttendance(
   classId: string,
   date: string
 ): Promise<AttendanceRecord[]> {
-  const { data, error } = await supabase.rpc("get_attendance", {
-    p_class_id: parseInt(classId),
-    p_date: date,
-  });
-  if (error) throw new Error(error.message);
+  const classIdNum = parseInt(classId);
 
-  return (data || []).map((r: any) => ({
-    studentId: r.student_id,
-    name: r.name,
-    nisn: r.nisn,
-    status: r.status || "A",
-    scanTime: r.scan_time,
-    scanMethod: r.scan_method,
-  }));
+  // Ambil daftar siswa langsung dari tabel students agar nama selalu tampil
+  const { data: studentList, error: stuError } = await supabase
+    .from("students")
+    .select("id, name, nisn")
+    .eq("class_id", classIdNum)
+    .order("name", { ascending: true });
+  if (stuError) throw new Error(stuError.message);
+
+  // Ambil record absensi untuk tanggal terkait
+  const { data: attendanceList, error: attError } = await supabase
+    .from("attendance")
+    .select("student_id, status, scan_time, scan_method")
+    .eq("class_id", classIdNum)
+    .eq("date", date);
+  if (attError) throw new Error(attError.message);
+
+  const attMap = new Map(
+    (attendanceList || []).map((a: any) => [a.student_id, a])
+  );
+
+  return (studentList || []).map((s: any) => {
+    const a = attMap.get(s.id);
+    return {
+      studentId: s.id,
+      name: s.name,
+      nisn: s.nisn,
+      status: a?.status || "A",
+      scanTime: a?.scan_time,
+      scanMethod: a?.scan_method,
+    };
+  });
 }
 
 export async function saveAttendance(
@@ -436,16 +455,33 @@ export async function getReport(
     throw new Error("Kelas tidak ditemukan");
   }
 
-  const { data: records, error: attError } = await supabase.rpc(
-    "get_attendance",
-    { p_class_id: parseInt(classId), p_date: date }
-  );
+  const classIdNum = parseInt(classId);
+
+  const { data: studentList, error: stuError } = await supabase
+    .from("students")
+    .select("id, name, nisn")
+    .eq("class_id", classIdNum)
+    .order("name", { ascending: true });
+  if (stuError) throw new Error(stuError.message);
+
+  const { data: attendanceList, error: attError } = await supabase
+    .from("attendance")
+    .select("student_id, status")
+    .eq("class_id", classIdNum)
+    .eq("date", date);
   if (attError) throw new Error(attError.message);
 
-  const { count: totalSiswa } = await supabase
-    .from("students")
-    .select("*", { count: "exact", head: true })
-    .eq("class_id", parseInt(classId));
+  const attMap = new Map(
+    (attendanceList || []).map((a: any) => [a.student_id, a.status])
+  );
+
+  const records = (studentList || []).map((s: any) => ({
+    name: s.name,
+    nisn: s.nisn,
+    status: attMap.get(s.id) || "A",
+  }));
+
+  const totalSiswa = studentList?.length || 0;
 
   const className = classInfo.name;
   const waGroupLink = classInfo.wa_group_link || null;
@@ -712,7 +748,7 @@ export async function getPrintData(
         const key = attendanceMap.get(`${s.id}|${d}`) || "A";
         summary[key] = (summary[key] || 0) + 1;
       }
-      const totalPresent = summary.H;
+      const totalPresent = summary.H + summary.T;
       const percentage =
         daysInMonth > 0 ? Math.round((totalPresent / daysInMonth) * 100) : 0;
 
@@ -788,7 +824,7 @@ export async function getPrintData(
         const key = attendanceMap.get(`${s.id}|${d}`) || "A";
         summary[key] = (summary[key] || 0) + 1;
       }
-      const totalPresent = summary.H;
+      const totalPresent = summary.H + summary.T;
       const percentage =
         totalDays > 0 ? Math.round((totalPresent / totalDays) * 100) : 0;
 

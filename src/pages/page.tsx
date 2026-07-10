@@ -89,7 +89,7 @@ export default function DashboardPage() {
                   <span className="material-symbols-outlined text-emerald-600">check_circle</span>
                 </div>
               </div>
-              <p className="text-2xl font-bold text-on-surface">{stats?.today?.H || 0}</p>
+              <p className="text-2xl font-bold text-on-surface">{(stats?.today?.H || 0) + (stats?.today?.T || 0)}</p>
               <p className="text-xs text-on-surface-variant">Hadir Hari Ini</p>
             </div>
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 shadow-sm">
@@ -99,7 +99,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <p className="text-2xl font-bold text-on-surface">
-                {(stats?.today?.A || 0) + (stats?.today?.I || 0) + (stats?.today?.S || 0) + (stats?.today?.T || 0)}
+                {(stats?.today?.A || 0) + (stats?.today?.I || 0) + (stats?.today?.S || 0)}
               </p>
               <p className="text-xs text-on-surface-variant">Tidak Hadir Hari Ini</p>
             </div>
