@@ -159,6 +159,63 @@ export async function getClassTodayStats(
   return { H, A, I, S, T };
 }
 
+/* Rekap status kehadiran berdasarkan periode (hari ini / bulan ini / tahun ini).
+   Jika classId diberikan, filter hanya untuk kelas tersebut.
+   Menghitung status yang tercatat di tabel attendance (H/A/I/S/T). */
+function toLocalISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export async function getStatusBreakdown(
+  period: "day" | "month" | "year",
+  classId?: string
+): Promise<Record<string, number>> {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+
+  let startStr: string;
+  let endStr: string;
+
+  if (period === "day") {
+    startStr = todayLocal();
+    endStr = todayLocal();
+  } else if (period === "month") {
+    startStr = toLocalISO(new Date(y, m, 1));
+    endStr = toLocalISO(new Date(y, m + 1, 0));
+  } else {
+    startStr = toLocalISO(new Date(y, 0, 1));
+    endStr = toLocalISO(new Date(y, 11, 31));
+  }
+
+  let query = supabase
+    .from("attendance")
+    .select("status")
+    .gte("date", startStr)
+    .lte("date", endStr);
+  if (classId) query = query.eq("class_id", parseInt(classId));
+
+  const { data } = await query;
+
+  let H = 0;
+  let A = 0;
+  let I = 0;
+  let S = 0;
+  let T = 0;
+  for (const r of data || []) {
+    if (r.status === "H") H++;
+    else if (r.status === "A") A++;
+    else if (r.status === "I") I++;
+    else if (r.status === "S") S++;
+    else if (r.status === "T") T++;
+  }
+
+  return { H, A, I, S, T };
+}
+
 /* Rekap ketidakhadiran (Alpa/Izin/Sakit/Terlambat) per kelas untuk hari ini.
    Siswa yang belum tercatat dihitung sebagai Alpa. */
 export interface ClassBreakdown {

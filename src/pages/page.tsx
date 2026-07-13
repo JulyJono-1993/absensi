@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getStats, getClasses, getClassTodayStats, getClassBreakdownToday } from "@/lib/api";
+import { getStats, getClasses, getStatusBreakdown, getClassBreakdownToday } from "@/lib/api";
 
 interface Stats {
   totalClasses: number;
@@ -40,8 +40,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
-  const [classStats, setClassStats] = useState<Record<string, number> | null>(null);
-  const [classStatsLoading, setClassStatsLoading] = useState(false);
+  const [period, setPeriod] = useState<"day" | "month" | "year">("day");
+  const [byPeriod, setByPeriod] = useState<Record<string, number> | null>(null);
+  const [byPeriodLoading, setByPeriodLoading] = useState(false);
   const [breakdown, setBreakdown] = useState<
     Array<{ classId: number; className: string; A: number; I: number; S: number; T: number }>
   >([]);
@@ -76,16 +77,12 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedClassId) {
-      setClassStats(null);
-      return;
-    }
-    setClassStatsLoading(true);
-    getClassTodayStats(selectedClassId)
-      .then((data) => setClassStats(data))
-      .catch(() => setClassStats({ H: 0, A: 0, I: 0, S: 0, T: 0 }))
-      .finally(() => setClassStatsLoading(false));
-  }, [selectedClassId]);
+    setByPeriodLoading(true);
+    getStatusBreakdown(period, selectedClassId || undefined)
+      .then((data) => setByPeriod(data))
+      .catch(() => setByPeriod({ H: 0, A: 0, I: 0, S: 0, T: 0 }))
+      .finally(() => setByPeriodLoading(false));
+  }, [period, selectedClassId]);
 
   const today = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -94,8 +91,10 @@ export default function DashboardPage() {
     day: "numeric",
   });
 
-  const activeToday =
-    selectedClassId && classStats ? classStats : stats?.today || {};
+  const periodLabel =
+    period === "day" ? "Hari Ini" : period === "month" ? "Bulan Ini" : "Tahun Ini";
+
+  const activeToday = byPeriod || stats?.today || {};
 
   const statusValues = ["H", "A", "I", "S", "T"].map((key) => ({
     key,
@@ -168,8 +167,8 @@ export default function DashboardPage() {
                   <span className="material-symbols-outlined text-emerald-600">check_circle</span>
                 </div>
               </div>
-              <p className="text-2xl font-bold text-on-surface">{(stats?.today?.H || 0) + (stats?.today?.T || 0)}</p>
-              <p className="text-xs text-on-surface-variant">Hadir Hari Ini</p>
+              <p className="text-2xl font-bold text-on-surface">{(byPeriod?.H || 0) + (byPeriod?.T || 0)}</p>
+              <p className="text-xs text-on-surface-variant">Hadir {periodLabel}</p>
             </div>
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
@@ -178,9 +177,9 @@ export default function DashboardPage() {
                 </div>
               </div>
               <p className="text-2xl font-bold text-on-surface">
-                {(stats?.today?.A || 0) + (stats?.today?.I || 0) + (stats?.today?.S || 0)}
+                {(byPeriod?.A || 0) + (byPeriod?.I || 0) + (byPeriod?.S || 0)}
               </p>
-              <p className="text-xs text-on-surface-variant">Tidak Hadir Hari Ini</p>
+              <p className="text-xs text-on-surface-variant">Tidak Hadir {periodLabel}</p>
             </div>
           </div>
 
@@ -190,20 +189,43 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <h3 className="font-bold text-on-surface flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">bar_chart</span>
-                  Status Kehadiran Hari Ini
+                  Status Kehadiran {periodLabel}
                 </h3>
-                <select
-                  value={selectedClassId}
-                  onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="bg-surface-container-low border border-outline-variant rounded-xl h-10 px-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary"
-                >
-                  <option value="">Semua Kelas</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <div className="flex flex-col sm:items-end gap-2">
+                  <div className="inline-flex bg-surface-container-low rounded-xl p-1 gap-1">
+                    {(
+                      [
+                        { k: "day", l: "Hari" },
+                        { k: "month", l: "Bulan" },
+                        { k: "year", l: "Tahun" },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.k}
+                        onClick={() => setPeriod(opt.k)}
+                        className={`px-3 h-9 rounded-lg text-sm font-medium transition-colors ${
+                          period === opt.k
+                            ? "bg-primary text-on-primary"
+                            : "text-on-surface-variant hover:bg-surface-container-high"
+                        }`}
+                      >
+                        {opt.l}
+                      </button>
+                    ))}
+                  </div>
+                  <select
+                    value={selectedClassId}
+                    onChange={(e) => setSelectedClassId(e.target.value)}
+                    className="bg-surface-container-low border border-outline-variant rounded-xl h-10 px-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">Semua Kelas</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              {classStatsLoading ? (
+              {byPeriodLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="animate-spin w-7 h-7 border-4 border-primary border-t-transparent rounded-full" />
                 </div>
