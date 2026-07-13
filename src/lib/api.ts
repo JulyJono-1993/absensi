@@ -121,6 +121,103 @@ export async function getStats(): Promise<Stats> {
   };
 }
 
+/* Status kehadiran hari ini untuk satu kelas tertentu.
+   Siswa yang belum tercatat dihitung sebagai Alpa (sama seperti getStats). */
+export async function getClassTodayStats(
+  classId: string
+): Promise<Record<string, number>> {
+  const today = todayLocal();
+
+  const { data: studentsByClass } = await supabase
+    .from("students")
+    .select("class_id")
+    .eq("class_id", parseInt(classId));
+
+  const totalInClass = (studentsByClass || []).length;
+
+  const { data: todayAttendance } = await supabase
+    .from("attendance")
+    .select("status")
+    .eq("class_id", parseInt(classId))
+    .eq("date", today);
+
+  let H = 0;
+  let A = 0;
+  let I = 0;
+  let S = 0;
+  let T = 0;
+  const rows = todayAttendance?.length || 0;
+  for (const r of todayAttendance || []) {
+    if (r.status === "H") H++;
+    else if (r.status === "A") A++;
+    else if (r.status === "I") I++;
+    else if (r.status === "S") S++;
+    else if (r.status === "T") T++;
+  }
+  A += Math.max(0, totalInClass - rows);
+
+  return { H, A, I, S, T };
+}
+
+/* Rekap ketidakhadiran (Alpa/Izin/Sakit/Terlambat) per kelas untuk hari ini.
+   Siswa yang belum tercatat dihitung sebagai Alpa. */
+export interface ClassBreakdown {
+  classId: number;
+  className: string;
+  H: number;
+  A: number;
+  I: number;
+  S: number;
+  T: number;
+}
+
+export async function getClassBreakdownToday(): Promise<ClassBreakdown[]> {
+  const today = todayLocal();
+
+  const { data: classes } = await supabase
+    .from("classes")
+    .select("id, name")
+    .order("name", { ascending: true });
+
+  const { data: students } = await supabase.from("students").select("class_id");
+  const studentsPerClass: Record<number, number> = {};
+  for (const s of students || []) {
+    studentsPerClass[s.class_id] = (studentsPerClass[s.class_id] || 0) + 1;
+  }
+
+  const { data: todayAttendance } = await supabase
+    .from("attendance")
+    .select("class_id, status")
+    .eq("date", today);
+
+  const perClass: Record<
+    number,
+    { rows: number; H: number; A: number; I: number; S: number; T: number }
+  > = {};
+  for (const r of todayAttendance || []) {
+    const cid = r.class_id;
+    if (!perClass[cid])
+      perClass[cid] = { rows: 0, H: 0, A: 0, I: 0, S: 0, T: 0 };
+    perClass[cid].rows += 1;
+    if (r.status in perClass[cid]) (perClass[cid] as any)[r.status] += 1;
+  }
+
+  return (classes || []).map((c: any) => {
+    const totalInClass = studentsPerClass[c.id] || 0;
+    const pc = perClass[c.id] || { rows: 0, H: 0, A: 0, I: 0, S: 0, T: 0 };
+    const A = pc.A + Math.max(0, totalInClass - pc.rows);
+    return {
+      classId: c.id,
+      className: c.name,
+      H: pc.H,
+      A,
+      I: pc.I,
+      S: pc.S,
+      T: pc.T,
+    };
+  });
+}
+
 /* ----------------------------- Classes ----------------------------- */
 export interface ClassItem {
   id: number;
