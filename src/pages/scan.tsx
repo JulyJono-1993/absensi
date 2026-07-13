@@ -27,7 +27,10 @@ export default function ScanPage() {
   const [batas, setBatas] = useState("07:00");
   const [savingBatas, setSavingBatas] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" as "success" | "error" | "info" });
+  const [fullscreen, setFullscreen] = useState(false);
+  const [now, setNow] = useState(new Date());
   const inputRef = useRef<HTMLInputElement>(null);
+  const fsInputRef = useRef<HTMLInputElement>(null);
   const processing = useRef(false);
 
   useEffect(() => {
@@ -38,6 +41,13 @@ export default function ScanPage() {
       .catch(() => {});
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    fsInputRef.current?.focus();
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, [fullscreen]);
 
   const process = async (rfid: string) => {
     if (processing.current) return;
@@ -92,12 +102,21 @@ export default function ScanPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">Scan RFID</h2>
-        <p className="text-on-surface-variant text-sm">
-          Tempel kartu RFID pada reader. Siswa akan otomatis tercatat
-          <strong> Masuk</strong> (sebelum batas) atau <strong>Terlambat</strong> (lewat batas).
-        </p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">Scan RFID</h2>
+          <p className="text-on-surface-variant text-sm">
+            Tempel kartu RFID pada reader. Siswa akan otomatis tercatat
+            <strong> Masuk</strong> (sebelum batas) atau <strong>Terlambat</strong> (lewat batas).
+          </p>
+        </div>
+        <button
+          onClick={() => setFullscreen(true)}
+          className="shrink-0 bg-primary text-on-primary font-semibold text-sm h-12 px-5 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-all"
+        >
+          <span className="material-symbols-outlined">fullscreen</span>
+          Layar Penuh
+        </button>
       </div>
 
       {/* Scanner */}
@@ -236,6 +255,152 @@ export default function ScanPage() {
         type={toast.type}
         onClose={() => setToast((t) => ({ ...t, show: false }))}
       />
+
+      {/* Fullscreen display mode */}
+      {fullscreen && (
+        <div className="fixed inset-0 z-[300] bg-slate-900 text-white flex flex-col">
+          <div className="flex items-center justify-between px-6 md:px-10 py-5">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-3xl text-emerald-400">rfid</span>
+              <div>
+                <h1 className="text-lg md:text-2xl font-bold">Absensi RFID</h1>
+                <p className="text-xs md:text-sm text-slate-300">
+                  Tempel kartu RFID pada reader
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xl md:text-3xl font-bold tabular-nums">
+                  {now.toLocaleTimeString("id-ID")}
+                </p>
+                <p className="text-xs md:text-sm text-slate-300 capitalize">
+                  {now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+              <button
+                onClick={() => setFullscreen(false)}
+                className="bg-white/10 hover:bg-white/20 p-3 rounded-xl transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined">fullscreen_exit</span>
+                <span className="hidden md:inline text-sm font-semibold">Tutup</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center px-6 md:px-10 overflow-hidden">
+            {result ? (
+              <div
+                className={`w-full max-w-4xl rounded-3xl p-8 md:p-14 text-center ${
+                  result.alreadyScanned
+                    ? "bg-amber-500/20 border-4 border-amber-400"
+                    : result.status === "H"
+                    ? "bg-emerald-500/20 border-4 border-emerald-400"
+                    : result.status === "T"
+                    ? "bg-purple-500/20 border-4 border-purple-400"
+                    : "bg-rose-500/20 border-4 border-rose-400"
+                }`}
+              >
+                {result.found ? (
+                  <>
+                    <p className="text-sm md:text-lg uppercase tracking-widest text-slate-200">
+                      {result.alreadyScanned ? "Sudah Absen" : "Siswa"}
+                    </p>
+                    <h2 className="text-4xl md:text-7xl font-extrabold mt-3 leading-tight">
+                      {result.name}
+                    </h2>
+                    <p className="text-lg md:text-2xl text-slate-200 mt-4 font-mono">
+                      NISN: {result.nisn}
+                    </p>
+                    <p className="text-lg md:text-2xl text-slate-200 mt-1">
+                      Kelas: {result.className}
+                    </p>
+                    <div className="mt-8 flex justify-center">
+                      {result.alreadyScanned ? (
+                        <span className="inline-flex items-center gap-3 px-6 md:px-10 py-3 md:py-4 rounded-2xl bg-white/20 text-xl md:text-3xl font-bold">
+                          <span className="material-symbols-outlined text-3xl md:text-5xl">info</span>
+                          Sudah Absen
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-3 px-6 md:px-10 py-3 md:py-4 rounded-2xl bg-white/20 text-xl md:text-3xl font-bold">
+                          <span className="material-symbols-outlined text-3xl md:text-5xl">
+                            {result.status === "H" ? "check_circle" : "schedule"}
+                          </span>
+                          {result.statusLabel}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm md:text-lg text-slate-300 mt-5">
+                      {result.scanTime
+                        ? new Date(result.scanTime).toLocaleTimeString("id-ID")
+                        : ""}
+                    </p>
+                  </>
+                ) : (
+                  <div>
+                    <span className="material-symbols-outlined text-6xl md:text-9xl">error</span>
+                    <p className="text-2xl md:text-4xl font-bold mt-4">RFID Belum Terdaftar</p>
+                    <p className="text-base md:text-xl text-slate-300 mt-2">
+                      Daftarkan kartu melalui menu Registrasi RFID.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center">
+                <span className="material-symbols-outlined text-8xl md:text-[12rem] text-emerald-400 animate-pulse">
+                  contactless
+                </span>
+                <p className="text-2xl md:text-4xl font-bold mt-6">Siap Scan</p>
+                <p className="text-base md:text-xl text-slate-300 mt-2">
+                  Tempelkan kartu RFID untuk mencatat kehadiran
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Recent activity */}
+          {log.length > 0 && (
+            <div className="px-6 md:px-10 pb-6">
+              <p className="text-xs md:text-sm text-slate-300 mb-2 font-semibold">
+                Aktivitas Terbaru
+              </p>
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {log.slice(0, 8).map((l) => (
+                  <div
+                    key={l.key}
+                    className={`shrink-0 rounded-xl px-4 py-3 text-sm min-w-[140px] ${
+                      l.alreadyScanned
+                        ? "bg-amber-500/20"
+                        : l.status === "H"
+                        ? "bg-emerald-500/20"
+                        : l.status === "T"
+                        ? "bg-purple-500/20"
+                        : "bg-rose-500/20"
+                    }`}
+                  >
+                    <p className="font-bold truncate">{l.found ? l.name : "Tidak dikenal"}</p>
+                    <p className="text-xs text-slate-300">{l.time}</p>
+                    <p className="text-xs mt-1 font-semibold">
+                      {l.alreadyScanned ? "Sudah Absen" : l.found ? l.statusLabel : "?"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hidden input to capture RFID while in fullscreen */}
+          <input
+            ref={fsInputRef}
+            value={buffer}
+            onChange={(e) => setBuffer(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="absolute opacity-0 w-0 h-0"
+            aria-hidden="true"
+          />
+        </div>
+      )}
     </div>
   );
 }
